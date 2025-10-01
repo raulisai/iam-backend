@@ -7,6 +7,16 @@ from flask import Flask
 from flasgger import Swagger
 from routes.auth_routes import auth_routes
 from routes.task_routes import task_routes
+from routes.profile_routes import profile_routes
+from routes.task_template_routes import task_template_routes
+from routes.mind_task_routes import mind_task_routes
+from routes.body_task_routes import body_task_routes
+from routes.achievement_routes import achievement_routes
+from routes.goal_routes import goal_routes
+from routes.task_log_routes import task_log_routes
+from routes.failure_routes import failure_routes
+from routes.bot_rule_routes import bot_rule_routes
+from routes.chat_ia_routes import chat_ia_routes
 import os
 
 app = Flask(__name__)
@@ -98,6 +108,16 @@ def add_cors_headers(response):
 # Register the blueprints
 app.register_blueprint(auth_routes)
 app.register_blueprint(task_routes)
+app.register_blueprint(profile_routes)
+app.register_blueprint(task_template_routes)
+app.register_blueprint(mind_task_routes)
+app.register_blueprint(body_task_routes)
+app.register_blueprint(achievement_routes)
+app.register_blueprint(goal_routes)
+app.register_blueprint(task_log_routes)
+app.register_blueprint(failure_routes)
+app.register_blueprint(bot_rule_routes)
+app.register_blueprint(chat_ia_routes)
 
 if __name__ == '__main__':
     app.run()
