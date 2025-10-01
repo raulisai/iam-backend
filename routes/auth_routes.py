@@ -11,16 +11,14 @@ def hello_world():
     """
     Handle the root endpoint and return a greeting message.
     ---
-    get:
-      summary: Get a greeting message
-      responses:
-        200:
-          description: A greeting message
-          content:
-            text/plain:
-              schema:
-                type: string
-                example: Hello World!
+    tags:
+      - Auth
+    responses:
+      200:
+        description: A greeting message
+        schema:
+          type: string
+          example: Hello World!
     """
     return 'Hello World!'
 
@@ -30,26 +28,15 @@ def get_users():
     """
     Handle the user get endpoint and return all users.
     ---
-    get:
-      summary: Get all users
-      responses:
-        200:
-          description: List of users
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                    email:
-                      type: string
-                    name:
-                      type: string
-                    hashed_password:
-                      type: string
+    tags:
+      - Auth
+    responses:
+      200:
+        description: List of users
+        schema:
+          type: array
+          items:
+            $ref: '#/definitions/User'
     """
     return get_all_users()
 
@@ -60,45 +47,28 @@ def login():
     """
     Handle the login endpoint and return a valid token.
     ---
-    post:
-      summary: Login user
-      requestBody:
+    tags:
+      - Auth
+    parameters:
+      - in: body
+        name: body
+        description: Login credentials
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                email:
-                  type: string
-                password:
-                  type: string
-              required:
-                - email
-                - password
-      responses:
-        200:
-          description: Successful login
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  token:
-                    type: string
-                  user:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                      user:
-                        type: string
-                      email:
-                        type: string
-        400:
-          description: Invalid request
-        401:
-          description: Invalid credentials
+        schema:
+          $ref: '#/definitions/LoginRequest'
+    responses:
+      200:
+        description: Successful login
+        schema:
+          $ref: '#/definitions/LoginResponse'
+      400:
+        description: Invalid request
+        schema:
+          $ref: '#/definitions/ErrorResponse'
+      401:
+        description: Invalid credentials
+        schema:
+          $ref: '#/definitions/ErrorResponse'
     """
     if request.method == 'OPTIONS':
         return jsonify({}), 200

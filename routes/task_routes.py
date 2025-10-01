@@ -17,60 +17,26 @@ def create_task():
     """
     Handle the task create endpoint.
     ---
-    post:
-      summary: Create a new task
-      requestBody:
+    tags:
+      - Tasks
+    parameters:
+      - in: body
+        name: body
+        description: Task fields
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                title:
-                  type: string
-                time:
-                  type: string
-                points:
-                  type: integer
-                desc:
-                  type: string
-                level:
-                  type: string
-                categoria:
-                  type: string
-              required:
-                - title
-                - time
-                - points
-                - desc
-                - level
-                - categoria
-      responses:
-        200:
-          description: Task created
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: integer
-                  created_at:
-                    type: string
-                  title:
-                    type: string
-                  time:
-                    type: string
-                  points:
-                    type: integer
-                  desc:
-                    type: string
-                  level:
-                    type: string
-                  categoria:
-                    type: string
-        400:
-          description: Invalid request or missing fields
+        schema:
+          $ref: '#/definitions/TaskInput'
+    responses:
+      200:
+        description: Task created
+        schema:
+          type: array
+          items:
+            $ref: '#/definitions/Task'
+      400:
+        description: Invalid request or missing fields
+        schema:
+          $ref: '#/definitions/ErrorResponse'
     """
     if request.method == 'OPTIONS':
         return jsonify({}), 200
@@ -87,34 +53,15 @@ def get_tasks():
     """
     Handle the task get endpoint.
     ---
-    get:
-      summary: Get all tasks
-      responses:
-        200:
-          description: List of tasks
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                    created_at:
-                      type: string
-                    title:
-                      type: string
-                    time:
-                      type: string
-                    points:
-                      type: integer
-                    desc:
-                      type: string
-                    level:
-                      type: string
-                    categoria:
-                      type: string
+    tags:
+      - Tasks
+    responses:
+      200:
+        description: List of tasks
+        schema:
+          type: array
+          items:
+            $ref: '#/definitions/Task'
     """
     if request.method == 'OPTIONS':
         return jsonify({}), 200
@@ -122,164 +69,92 @@ def get_tasks():
     return get_all_tasks()
 
 
-@task_routes.route('/get/<id>', methods=['GET', 'OPTIONS'])
-def get_task(id):
+@task_routes.route('/get/<task_id>', methods=['GET', 'OPTIONS'])
+def get_task(task_id):
     """
     Handle the task get by id endpoint.
     ---
-    get:
-      summary: Get a task by ID
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        200:
-          description: Task data
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                    created_at:
-                      type: string
-                    title:
-                      type: string
-                    time:
-                      type: string
-                    points:
-                      type: integer
-                    desc:
-                      type: string
-                    level:
-                      type: string
-                    categoria:
-                      type: string
+    tags:
+      - Tasks
+    parameters:
+      - name: task_id
+        in: path
+        required: true
+        type: integer
+        description: Task ID
+    responses:
+      200:
+        description: Task data
+        schema:
+          type: array
+          items:
+            $ref: '#/definitions/Task'
     """
     if request.method == 'OPTIONS':
         return jsonify({}), 200
-    
-    return get_task_by_id(id)
+    return get_task_by_id(int(task_id))
 
 
-@task_routes.route('/update/<id>', methods=['PUT', 'OPTIONS'])
-def update_task(id):
+@task_routes.route('/update/<task_id>', methods=['PUT', 'OPTIONS'])
+def update_task(task_id):
     """
     Handle the task update endpoint.
     ---
-    put:
-      summary: Update a task by ID
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
+    tags:
+      - Tasks
+    parameters:
+      - name: task_id
+        in: path
         required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                title:
-                  type: string
-                time:
-                  type: string
-                points:
-                  type: integer
-                desc:
-                  type: string
-                level:
-                  type: string
-                categoria:
-                  type: string
-      responses:
-        200:
-          description: Updated task data
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                    created_at:
-                      type: string
-                    title:
-                      type: string
-                    time:
-                      type: string
-                    points:
-                      type: integer
-                    desc:
-                      type: string
-                    level:
-                      type: string
-                    categoria:
-                      type: string
-        400:
-          description: Invalid request
+        type: integer
+        description: Task ID
+      - in: body
+        name: body
+        description: Fields to update
+        required: true
+        schema:
+          $ref: '#/definitions/TaskInput'
+    responses:
+      200:
+        description: Updated task data
+        schema:
+          type: array
+          items:
+            $ref: '#/definitions/Task'
+      400:
+        description: Invalid request
+        schema:
+          $ref: '#/definitions/ErrorResponse'
     """
     if request.method == 'OPTIONS':
         return jsonify({}), 200
-    
     data = request.get_json()
     if data is None:
         return jsonify({'error': 'Invalid request'}), 400
-    
-    return update_task_by_id(id, data)
+    return update_task_by_id(int(task_id), data)
 
 
-@task_routes.route('/delete/<id>', methods=['DELETE', 'OPTIONS'])
-def delete_task(id):
+@task_routes.route('/delete/<task_id>', methods=['DELETE', 'OPTIONS'])
+def delete_task(task_id):
     """
     Handle the task delete endpoint.
     ---
-    delete:
-      summary: Delete a task by ID
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        200:
-          description: Deleted task data
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                    created_at:
-                      type: string
-                    title:
-                      type: string
-                    time:
-                      type: string
-                    points:
-                      type: integer
-                    desc:
-                      type: string
-                    level:
-                      type: string
-                    categoria:
-                      type: string
+    tags:
+      - Tasks
+    parameters:
+      - name: task_id
+        in: path
+        required: true
+        type: integer
+        description: Task ID
+    responses:
+      200:
+        description: Deleted task data
+        schema:
+          type: array
+          items:
+            $ref: '#/definitions/Task'
     """
     if request.method == 'OPTIONS':
         return jsonify({}), 200
-    
-    return delete_task_by_id(id)
+    return delete_task_by_id(int(task_id))
