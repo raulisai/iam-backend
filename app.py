@@ -7,8 +7,12 @@ from flask import Flask
 from flasgger import Swagger
 from routes.auth_routes import auth_routes
 from routes.task_routes import task_routes
+import os
 
 app = Flask(__name__)
+
+# JWT Secret Key - In production, use environment variable
+app.config['SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
 
 # Swagger configuration and shared schema definitions (Swagger 2.0)
 swagger_template = {

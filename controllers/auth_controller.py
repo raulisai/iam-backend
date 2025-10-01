@@ -1,7 +1,7 @@
 """Authentication controller for handling user authentication logic."""
 from flask import jsonify
 from lib.db import get_supabase
-from services.auth_service import verify_password
+from services.auth_service import verify_password, generate_jwt_token
 
 
 def get_all_users():
@@ -37,8 +37,11 @@ def authenticate_user(email, password):
     user = res.data[0] if res.data else None
     
     if user is not None and verify_password(user['hashed_password'], password):
+        # Generate JWT token
+        token = generate_jwt_token(user['id'], user['email'], user['name'])
+        
         return jsonify({
-            'token': user['id'],
+            'token': token,
             'user': {
                 'id': user['id'],
                 'user': user['name'],
