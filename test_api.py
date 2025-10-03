@@ -2,9 +2,9 @@
 Script de ejemplo para probar los endpoints del backend.
 Requiere tener el servidor corriendo en http://localhost:5000
 """
-
-import requests
 import json
+import requests
+
 
 BASE_URL = "http://localhost:5000"
 
