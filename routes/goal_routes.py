@@ -51,6 +51,18 @@ def get_goals():
               description:
                 type: string
                 example: "Crear el hábito de meditación diaria"
+              type:
+                type: string
+                example: "short"
+                description: Goal type classification
+              progress:
+                type: string
+                example: "85"
+                description: Current progress as text
+              desc_short:
+                type: string
+                example: "NULL"
+                description: Short description
               metric_key:
                 type: string
                 example: "meditation_days"
@@ -185,6 +197,18 @@ def create_goal():
               type: string
               example: "Crear hábito de meditación diaria"
               description: Goal description
+            type:
+              type: string
+              example: "short"
+              description: Goal type classification
+            progress:
+              type: string
+              example: "0"
+              description: Current progress as text
+            desc_short:
+              type: string
+              example: "Meditar diariamente"
+              description: Short description
             metric_key:
               type: string
               example: "meditation_days"
@@ -224,6 +248,15 @@ def create_goal():
               type: string
             description:
               type: string
+            type:
+              type: string
+              description: Goal type classification
+            progress:
+              type: string
+              description: Current progress as text
+            desc_short:
+              type: string
+              description: Short description
             metric_key:
               type: string
             target_value:
@@ -286,6 +319,18 @@ def update_goal(goal_id):
               example: "Meditar 60 días seguidos"
             description:
               type: string
+            type:
+              type: string
+              example: "long"
+              description: Goal type classification
+            progress:
+              type: string
+              example: "50"
+              description: Current progress as text
+            desc_short:
+              type: string
+              example: "Updated short description"
+              description: Short description
             metric_key:
               type: string
               example: "meditation_days"
@@ -314,6 +359,15 @@ def update_goal(goal_id):
               type: string
             description:
               type: string
+            type:
+              type: string
+              description: Goal type classification
+            progress:
+              type: string
+              description: Current progress as text
+            desc_short:
+              type: string
+              description: Short description
             metric_key:
               type: string
             target_value:
