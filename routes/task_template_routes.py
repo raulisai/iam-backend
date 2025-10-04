@@ -448,7 +448,7 @@ def update(template_id):
             reward_xp:
               type: integer
               example: 75
-            descr:
+            desc:
               type: string
               example: "Sesión actualizada"
             default_params:
@@ -475,7 +475,7 @@ def update(template_id):
               type: integer
             reward_xp:
               type: integer
-            descr:
+            desc:
               type: string
             default_params:
               type: object

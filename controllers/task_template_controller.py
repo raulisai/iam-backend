@@ -77,7 +77,7 @@ def create_template(data):
     Returns:
         tuple: JSON response with created template and status code.
     """
-    required_fields = ['key', 'name', 'category', 'descr']
+    required_fields = ['key', 'name', 'category', 'desc']
     
     if not all(field in data for field in required_fields):
         return jsonify({'error': 'Missing required fields'}), 400

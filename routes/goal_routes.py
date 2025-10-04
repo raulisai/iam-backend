@@ -48,21 +48,17 @@ def get_goals():
               title:
                 type: string
                 example: "Meditar 30 días seguidos"
-              descr:
+              description:
                 type: string
                 example: "Crear el hábito de meditación diaria"
+              metric_key:
+                type: string
+                example: "meditation_days"
+                description: Key identifier for the metric
               target_value:
-                type: integer
+                type: number
                 example: 30
                 description: Target value to achieve
-              current_value:
-                type: integer
-                example: 15
-                description: Current progress
-              unit:
-                type: string
-                example: "días"
-                description: Unit of measurement
               is_active:
                 type: boolean
                 example: true
@@ -70,7 +66,7 @@ def get_goals():
                 type: string
                 format: date
                 example: "2025-01-01"
-              target_date:
+              end_date:
                 type: string
                 format: date
                 example: "2025-01-31"
@@ -121,27 +117,22 @@ def get_goal_by_id(goal_id):
               format: uuid
             title:
               type: string
-            descr:
+            description:
+              type: string
+            metric_key:
               type: string
             target_value:
-              type: integer
-            current_value:
-              type: integer
-            unit:
-              type: string
+              type: number
             is_active:
               type: boolean
             start_date:
               type: string
               format: date
-            target_date:
+            end_date:
               type: string
               format: date
               nullable: true
             created_at:
-              type: string
-              format: date-time
-            updated_at:
               type: string
               format: date-time
       401:
@@ -190,23 +181,18 @@ def create_goal():
               type: string
               example: "Meditar 30 días seguidos"
               description: Goal title
-            descr:
+            description:
               type: string
               example: "Crear hábito de meditación diaria"
               description: Goal description
+            metric_key:
+              type: string
+              example: "meditation_days"
+              description: Key identifier for the metric
             target_value:
-              type: integer
+              type: number
               example: 30
               description: Target value to achieve
-            current_value:
-              type: integer
-              example: 0
-              default: 0
-              description: Initial progress value
-            unit:
-              type: string
-              example: "días"
-              description: Unit of measurement
             is_active:
               type: boolean
               example: true
@@ -217,7 +203,7 @@ def create_goal():
               format: date
               example: "2025-01-01"
               description: Goal start date
-            target_date:
+            end_date:
               type: string
               format: date
               example: "2025-01-31"
@@ -236,20 +222,18 @@ def create_goal():
               format: uuid
             title:
               type: string
-            descr:
+            description:
+              type: string
+            metric_key:
               type: string
             target_value:
-              type: integer
-            current_value:
-              type: integer
-            unit:
-              type: string
+              type: number
             is_active:
               type: boolean
             start_date:
               type: string
               format: date
-            target_date:
+            end_date:
               type: string
               format: date
               nullable: true
@@ -300,20 +284,18 @@ def update_goal(goal_id):
             title:
               type: string
               example: "Meditar 60 días seguidos"
-            descr:
+            description:
               type: string
+            metric_key:
+              type: string
+              example: "meditation_days"
             target_value:
-              type: integer
+              type: number
               example: 60
-            current_value:
-              type: integer
-              example: 30
-            unit:
-              type: string
             is_active:
               type: boolean
               example: true
-            target_date:
+            end_date:
               type: string
               format: date
     responses:
@@ -330,27 +312,22 @@ def update_goal(goal_id):
               format: uuid
             title:
               type: string
-            descr:
+            description:
+              type: string
+            metric_key:
               type: string
             target_value:
-              type: integer
-            current_value:
-              type: integer
-            unit:
-              type: string
+              type: number
             is_active:
               type: boolean
             start_date:
               type: string
               format: date
-            target_date:
+            end_date:
               type: string
               format: date
               nullable: true
             created_at:
-              type: string
-              format: date-time
-            updated_at:
               type: string
               format: date-time
       400:

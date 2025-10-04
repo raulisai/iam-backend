@@ -3,7 +3,7 @@ This is a simple Flask application that returns a greeting message
 when the root endpoint is accessed.
 """
 
-from flask import Flask
+from flask import Flask, request, jsonify
 from flasgger import Swagger
 from routes.auth_routes import auth_routes
 from routes.task_routes import task_routes
@@ -95,11 +95,21 @@ swagger_template = {
 
 swagger = Swagger(app, template=swagger_template)
 
-# CORS: allow frontend at http://localhost:5173
+# Handle preflight OPTIONS requests BEFORE blueprints
+@app.before_request
+def handle_preflight():
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'ok'})
+        response.headers['Access-Control-Allow-Origin'] = 'http://localhost:5173'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+        return response, 200
+
+# CORS configuration - Apply to all responses
 @app.after_request
-def add_cors_headers(response):
-    response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Vary'] = 'Origin'
+def after_request(response):
+    response.headers['Access-Control-Allow-Origin'] = 'http://localhost:5173'
     response.headers['Access-Control-Allow-Credentials'] = 'true'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
