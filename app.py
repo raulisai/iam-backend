@@ -32,7 +32,7 @@ swagger_template = {
         "description": "API documentation for authentication and task management.",
         "version": "1.0.0"
     },
-    "schemes": ["http"],
+    "schemes": ["http", "https"],
     "basePath": "/",
     "definitions": {
         "ErrorResponse": {
