@@ -102,7 +102,7 @@ curl -X GET http://localhost:5000/api/achievements \
 #### failures
 - Task failure records
 - Foreign keys: task_table, task_id, user_id
-- Fields: reason, severity
+- Fields: reason, severity, notes, title, rootCause, prevention, created_at
 
 #### goals
 - User goals/targets

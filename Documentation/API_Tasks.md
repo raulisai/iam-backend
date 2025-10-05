@@ -249,6 +249,10 @@ Retrieves user failures.
     "user_id": "user-uuid",
     "reason": "Olvidé hacer la tarea",
     "severity": "minor",
+    "notes": "Reprogramar para mañana",
+    "title": "Falta de gestión del tiempo",
+    "rootCause": "Sobrecarga de trabajo sin planificación adecuada",
+    "prevention": "Implementar técnica Pomodoro y planificación semanal",
     "created_at": "2025-10-01T00:00:00Z"
   }
 ]
@@ -260,10 +264,14 @@ Creates a failure record.
 **Request Body:**
 ```json
 {
-  "task_table": "string",  // Required
+  "task_table": "string",  // Required: "tasks_mind" or "tasks_body"
   "task_id": "uuid",  // Required
   "reason": "string",  // Required
-  "severity": "string"  // Required: "minor", "major", "critical"
+  "severity": "string",  // Optional: "minor", "major", "critical" (default: "minor")
+  "notes": "string",  // Optional: Additional notes
+  "title": "string",  // Optional: Title or summary
+  "rootCause": "string",  // Optional: Root cause analysis
+  "prevention": "string"  // Optional: Prevention strategy
 }
 ```
 

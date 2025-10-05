@@ -337,7 +337,11 @@ curl -X POST $BASE_URL/api/failures \
     "task_table": "tasks_mind",
     "task_id": "<task-uuid>",
     "reason": "Olvidé hacer la tarea",
-    "severity": "minor"
+    "severity": "minor",
+    "notes": "Reprogramar para mañana",
+    "title": "Falta de gestión del tiempo",
+    "rootCause": "Sobrecarga de trabajo sin planificación adecuada",
+    "prevention": "Implementar técnica Pomodoro y planificación semanal"
   }'
 ```
 

@@ -62,7 +62,19 @@ def get_failures():
                 type: string
                 example: "Reprogramar para mañana"
                 nullable: true
-              occurred_at:
+              title:
+                type: string
+                example: "Falta de gestión del tiempo"
+                nullable: true
+              rootCause:
+                type: string
+                example: "Sobrecarga de trabajo sin planificación adecuada"
+                nullable: true
+              prevention:
+                type: string
+                example: "Implementar técnica Pomodoro y planificación semanal"
+                nullable: true
+              created_at:
                 type: string
                 format: date-time
       401:
@@ -123,6 +135,18 @@ def create_failure():
               type: string
               example: "Reprogramar para mañana"
               description: Optional additional notes
+            title:
+              type: string
+              example: "Falta de gestión del tiempo"
+              description: Title or summary of the failure
+            rootCause:
+              type: string
+              example: "Sobrecarga de trabajo sin planificación adecuada"
+              description: Root cause analysis of the failure
+            prevention:
+              type: string
+              example: "Implementar técnica Pomodoro y planificación semanal"
+              description: Prevention strategy for future occurrences
     responses:
       201:
         description: Failure record created successfully
@@ -149,7 +173,16 @@ def create_failure():
             notes:
               type: string
               nullable: true
-            occurred_at:
+            title:
+              type: string
+              nullable: true
+            rootCause:
+              type: string
+              nullable: true
+            prevention:
+              type: string
+              nullable: true
+            created_at:
               type: string
               format: date-time
       400:
