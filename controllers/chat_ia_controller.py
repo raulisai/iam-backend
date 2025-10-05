@@ -1,6 +1,8 @@
 """Chat IA controller for handling chat session and message operations."""
 from flask import jsonify, request
 from datetime import datetime
+import asyncio
+import logging
 from services.chat_ia_service import (
     get_user_chat_sessions,
     get_chat_session_by_id,
@@ -11,6 +13,9 @@ from services.chat_ia_service import (
     create_message,
     delete_message
 )
+from services.agent_service import get_agent_service
+
+logger = logging.getLogger(__name__)
 
 
 def get_my_chat_sessions():
@@ -146,14 +151,14 @@ def get_messages(session_id):
 
 
 def create_new_message(session_id, data):
-    """Create a new message in a chat session.
+    """Create a new message in a chat session and generate AI response.
     
     Args:
         session_id (str): Session ID.
         data (dict): Message data.
     
     Returns:
-        tuple: JSON response with created message and status code.
+        tuple: JSON response with created message and AI response, and status code.
     """
     user_id = request.user.get('user_id')
     
@@ -170,15 +175,96 @@ def create_new_message(session_id, data):
     
     data['session_id'] = session_id
     
-    message = create_message(data)
+    # Create user message
+    user_message = create_message(data)
     
-    if message is None:
+    if user_message is None:
         return jsonify({'error': 'Failed to create message'}), 500
     
     # Update session's last_message_at
     update_chat_session(session_id, {'last_message_at': datetime.utcnow().isoformat()})
     
-    return jsonify(message), 201
+    # If the message is from the user, generate AI response
+    assistant_message = None
+    if data.get('role') == 'user':
+        try:
+            # Get conversation history (last 10 messages for context)
+            all_messages = get_session_messages(session_id)
+            recent_messages = all_messages[-11:-1] if len(all_messages) > 1 else []
+            
+            # Build conversation context for the agent
+            conversation_history = []
+            for msg in recent_messages:
+                conversation_history.append({
+                    'role': msg.get('role', 'user'),
+                    'content': msg.get('content', '')
+                })
+            
+            # Get agent service
+            agent_service = get_agent_service()
+            
+            # Add conversation history to the agent's conversation
+            if conversation_history and session_id not in agent_service.agent.conversations:
+                conversation = agent_service.agent.get_or_create_conversation(session_id)
+                for msg in conversation_history:
+                    conversation.add_message(msg['role'], msg['content'])
+            
+            # Use the user's message directly without extra prompt
+            prompt = data.get('content')
+            
+            # Generate response using agent (run async in sync context)
+            logger.info(f"Generating AI response for session {session_id}")
+            result = asyncio.run(
+                agent_service.agent.ask(
+                    prompt,
+                    conversation_id=session_id,
+                    user_context={
+                        "user_id": user_id,
+                        "session_id": session_id
+                    }
+                )
+            )
+            
+            if result.get("success"):
+                ai_response = result.get('response', 'I apologize, but I had trouble generating a response.')
+                logger.info(f"AI response generated successfully for session {session_id}")
+            else:
+                ai_response = 'I apologize, but I encountered an error. Please try again.'
+                logger.error(f"AI response generation failed: {result.get('error')}")
+            
+            # Create assistant message
+            assistant_data = {
+                'session_id': session_id,
+                'role': 'assistant',
+                'content': ai_response
+            }
+            
+            assistant_message = create_message(assistant_data)
+            
+            # Update session timestamp again
+            update_chat_session(session_id, {'last_message_at': datetime.utcnow().isoformat()})
+            
+        except Exception as e:
+            # Log error but don't fail the request
+            logger.error(f"Error generating AI response: {str(e)}", exc_info=True)
+            
+            # Create a fallback message
+            assistant_data = {
+                'session_id': session_id,
+                'role': 'assistant',
+                'content': 'I apologize, but I encountered an error processing your message. Please try again.'
+            }
+            assistant_message = create_message(assistant_data)
+    
+    # Return both messages if assistant responded, otherwise just user message
+    if assistant_message:
+        response_data = {
+            'user_message': user_message,
+            'assistant_message': assistant_message
+        }
+        return jsonify(response_data), 201
+    else:
+        return jsonify(user_message), 201
 
 
 def delete_message_by_id(message_id):
