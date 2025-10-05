@@ -55,6 +55,18 @@ def get_profile():
             preferred_language:
               type: string
               example: "es"
+            hours_available_to_week:
+              type: number
+              example: 40
+            work_schedules:
+              type: string
+              example: "9:00-17:00"
+            current_status:
+              type: string
+              example: "active"
+            hours_used_to_week:
+              type: number
+              example: 25.5
             created_at:
               type: string
               format: date-time
@@ -118,6 +130,22 @@ def create_profile():
               example: "es"
               default: "es"
               description: Idioma preferido (es, en, etc.)
+            hours_available_to_week:
+              type: number
+              example: 40
+              description: Horas disponibles por semana
+            work_schedules:
+              type: string
+              example: "9:00-17:00"
+              description: Horarios de trabajo
+            current_status:
+              type: string
+              example: "active"
+              description: Estado actual del usuario
+            hours_used_to_week:
+              type: number
+              example: 0
+              description: Horas usadas en la semana
     responses:
       201:
         description: Profile created successfully
@@ -143,6 +171,14 @@ def create_profile():
               type: number
             preferred_language:
               type: string
+            hours_available_to_week:
+              type: number
+            work_schedules:
+              type: string
+            current_status:
+              type: string
+            hours_used_to_week:
+              type: number
             created_at:
               type: string
               format: date-time
@@ -200,6 +236,18 @@ def update_profile():
             preferred_language:
               type: string
               example: "en"
+            hours_available_to_week:
+              type: number
+              example: 45
+            work_schedules:
+              type: string
+              example: "10:00-18:00"
+            current_status:
+              type: string
+              example: "busy"
+            hours_used_to_week:
+              type: number
+              example: 30.5
     responses:
       200:
         description: Profile updated successfully
@@ -225,6 +273,14 @@ def update_profile():
               type: number
             preferred_language:
               type: string
+            hours_available_to_week:
+              type: number
+            work_schedules:
+              type: string
+            current_status:
+              type: string
+            hours_used_to_week:
+              type: number
             created_at:
               type: string
               format: date-time
