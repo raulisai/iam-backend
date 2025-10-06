@@ -112,7 +112,7 @@ The task will be automatically added to the user's mind tasks list."""
                     "estimated_minutes": params.get('duration', 30) if isinstance(params, dict) else 30,
                     "difficulty": 3,
                     "reward_xp": 50,
-                    "descr": f"Mind task: {template_name}",
+                    "desc": f"Mind task: {template_name}",
                     "default_params": params if isinstance(params, dict) else {},
                     "created_by": "bot"
                 }
@@ -264,7 +264,7 @@ The task will be automatically added to the user's body tasks list."""
                     "estimated_minutes": params.get('duration', 30) if isinstance(params, dict) else 30,
                     "difficulty": 3,
                     "reward_xp": 60,
-                    "descr": f"Body task: {template_name}",
+                    "desc": f"Body task: {template_name}",
                     "default_params": params if isinstance(params, dict) else {},
                     "created_by": "bot"
                 }
