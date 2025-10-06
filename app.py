@@ -17,6 +17,7 @@ from routes.task_log_routes import task_log_routes
 from routes.failure_routes import failure_routes
 from routes.bot_rule_routes import bot_rule_routes
 from routes.chat_ia_routes import chat_ia_routes
+from routes.stats_routes import stats_routes
 import os
 
 app = Flask(__name__)
@@ -128,6 +129,7 @@ app.register_blueprint(task_log_routes)
 app.register_blueprint(failure_routes)
 app.register_blueprint(bot_rule_routes)
 app.register_blueprint(chat_ia_routes)
+app.register_blueprint(stats_routes)
 
 if __name__ == '__main__':
     app.run()
