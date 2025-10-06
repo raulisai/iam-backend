@@ -22,7 +22,7 @@ class CreateMindTaskTool(BaseTool):
     
     @property
     def description(self) -> str:
-        return """Create a mental/cognitive task for the user based on a template.
+        return """Create a mental/cognitive task for the user.
         
 Use this tool when recommending or creating tasks related to:
 - Reading, studying, or learning
@@ -34,12 +34,11 @@ Use this tool when recommending or creating tasks related to:
 - Memory training
 - Any cognitive or intellectual activity
 
-IMPORTANT: Tasks are created from templates. You must provide a template_id.
-Common template IDs for mind tasks:
-- 'meditation' for meditation sessions
-- 'reading' for reading activities
-- 'journaling' for writing/reflection
-- 'planning' for organization tasks
+FLEXIBLE TEMPLATE SYSTEM:
+- You can use existing templates (use get_task_templates to see available ones)
+- OR create new custom templates on the fly by providing a unique template_key
+- If the template doesn't exist, it will be created automatically with sensible defaults
+- Use descriptive template_key names like: 'meditation_10min', 'read_book_chapter', 'daily_reflection', etc.
 
 The task will be automatically added to the user's mind tasks list."""
     
@@ -88,7 +87,7 @@ The task will be automatically added to the user's mind tasks list."""
     def execute(self, **kwargs) -> Dict[str, Any]:
         """Create a mind task"""
         try:
-            from services.task_template_service import get_task_template_by_key
+            from services.task_template_service import get_task_template_by_key, create_task_template
             
             user_id = kwargs.get('user_id')
             template_key = kwargs.get('template_key')
@@ -97,13 +96,38 @@ The task will be automatically added to the user's mind tasks list."""
             
             # Convert template_key to template_id (UUID)
             template = get_task_template_by_key(template_key)
+            
+            # If template doesn't exist, create it automatically
             if not template:
-                logger.error("Template not found: %s", template_key)
-                return {
-                    "success": False,
-                    "error": f"Template '{template_key}' not found",
-                    "message": f"Task template '{template_key}' does not exist. Use get_task_templates to see available templates."
+                logger.info("Template '%s' not found, creating it automatically", template_key)
+                
+                # Generate a friendly name from the key
+                template_name = template_key.replace('_', ' ').title()
+                
+                # Create the template with sensible defaults
+                template_data = {
+                    "key": template_key,
+                    "name": template_name,
+                    "category": "mind",
+                    "estimated_minutes": params.get('duration', 30) if isinstance(params, dict) else 30,
+                    "difficulty": 3,
+                    "reward_xp": 50,
+                    "descr": f"Mind task: {template_name}",
+                    "default_params": params if isinstance(params, dict) else {},
+                    "created_by": "bot"
                 }
+                
+                template = create_task_template(template_data)
+                
+                if not template:
+                    logger.error("Failed to create template: %s", template_key)
+                    return {
+                        "success": False,
+                        "error": "Failed to create task template",
+                        "message": "Could not create the task template. Please try again."
+                    }
+                
+                logger.info("Template created successfully: %s (ID: %s)", template_key, template.get('id'))
             
             template_id = template.get('id')
             
@@ -114,7 +138,7 @@ The task will be automatically added to the user's mind tasks list."""
                 "created_by": "bot",
                 "status": "pending",
                 "scheduled_at": scheduled_at or datetime.now(timezone.utc).isoformat(),
-                "params": params
+                "params": params if isinstance(params, dict) else {}
             }
             
             # Create the task
@@ -150,7 +174,7 @@ class CreateBodyTaskTool(BaseTool):
     
     @property
     def description(self) -> str:
-        return """Create a physical/body task for the user based on a template.
+        return """Create a physical/body task for the user.
         
 Use this tool when recommending or creating tasks related to:
 - Exercise and workouts (running, gym, swimming, etc.)
@@ -162,12 +186,11 @@ Use this tool when recommending or creating tasks related to:
 - Breathing exercises
 - Any physical or body-related activity
 
-IMPORTANT: Tasks are created from templates. You must provide a template_id.
-Common template IDs for body tasks:
-- 'workout' for general exercise
-- 'running' for running activities
-- 'yoga' for yoga sessions
-- 'stretching' for flexibility work
+FLEXIBLE TEMPLATE SYSTEM:
+- You can use existing templates (use get_task_templates to see available ones)
+- OR create new custom templates on the fly by providing a unique template_key
+- If the template doesn't exist, it will be created automatically with sensible defaults
+- Use descriptive template_key names like: 'morning_run_5km', 'gym_upper_body', 'yoga_flexibility', etc.
 
 The task will be automatically added to the user's body tasks list."""
     
@@ -216,7 +239,7 @@ The task will be automatically added to the user's body tasks list."""
     def execute(self, **kwargs) -> Dict[str, Any]:
         """Create a body task"""
         try:
-            from services.task_template_service import get_task_template_by_key
+            from services.task_template_service import get_task_template_by_key, create_task_template
             
             user_id = kwargs.get('user_id')
             template_key = kwargs.get('template_key')
@@ -225,13 +248,38 @@ The task will be automatically added to the user's body tasks list."""
             
             # Convert template_key to template_id (UUID)
             template = get_task_template_by_key(template_key)
+            
+            # If template doesn't exist, create it automatically
             if not template:
-                logger.error("Template not found: %s", template_key)
-                return {
-                    "success": False,
-                    "error": f"Template '{template_key}' not found",
-                    "message": f"Task template '{template_key}' does not exist. Use get_task_templates to see available templates."
+                logger.info("Template '%s' not found, creating it automatically", template_key)
+                
+                # Generate a friendly name from the key
+                template_name = template_key.replace('_', ' ').title()
+                
+                # Create the template with sensible defaults
+                template_data = {
+                    "key": template_key,
+                    "name": template_name,
+                    "category": "body",
+                    "estimated_minutes": params.get('duration', 30) if isinstance(params, dict) else 30,
+                    "difficulty": 3,
+                    "reward_xp": 60,
+                    "descr": f"Body task: {template_name}",
+                    "default_params": params if isinstance(params, dict) else {},
+                    "created_by": "bot"
                 }
+                
+                template = create_task_template(template_data)
+                
+                if not template:
+                    logger.error("Failed to create template: %s", template_key)
+                    return {
+                        "success": False,
+                        "error": "Failed to create task template",
+                        "message": "Could not create the task template. Please try again."
+                    }
+                
+                logger.info("Template created successfully: %s (ID: %s)", template_key, template.get('id'))
             
             template_id = template.get('id')
             
@@ -242,7 +290,7 @@ The task will be automatically added to the user's body tasks list."""
                 "created_by": "bot",
                 "status": "pending",
                 "scheduled_at": scheduled_at or datetime.now(timezone.utc).isoformat(),
-                "params": params
+                "params": params if isinstance(params, dict) else {}
             }
             
             # Create the task
