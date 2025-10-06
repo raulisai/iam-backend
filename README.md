@@ -8,7 +8,8 @@ Backend completo desarrollado en Flask con autenticación JWT, gestión de tarea
 - ✅ **Gestión de Perfiles** - Perfiles personalizados de usuario
 - ✅ **Sistema de Tareas** - Tareas de mente y cuerpo con plantillas reutilizables
 - ✅ **Logros y Metas** - Sistema de gamificación y objetivos
-- ✅ **Chat IA** - Gestión de sesiones y mensajes de chat
+- ✅ **Chat IA Inteligente** - Agente de IA con capacidades de acción (OpenAI)
+- ✅ **Sistema de Tools Extensible** - El agente puede crear tareas, consultar info y más
 - ✅ **Bot Rules** - Sistema de reglas automáticas configurable
 - ✅ **Registro de Actividades** - Logs y tracking de fallos
 - ✅ **Swagger UI** - Documentación interactiva de API
@@ -43,7 +44,7 @@ source .venv/bin/activate
 
 ### 3. Instalar dependencias
 ```bash
-pip install flask flask-cors flasgger supabase pyjwt bcrypt
+pip install flask flask-cors flasgger supabase pyjwt bcrypt openai python-dotenv
 ```
 
 ### 4. Configurar variables de entorno
@@ -52,6 +53,7 @@ Crear archivo `.env` en la raíz:
 JWT_SECRET_KEY=tu-secret-key-super-segura-aqui
 SUPABASE_URL=tu-supabase-project-url
 SUPABASE_KEY=tu-supabase-anon-key
+OPENAI_API_KEY=tu-openai-api-key-aqui
 ```
 
 ### 5. Crear las tablas en Supabase
@@ -71,9 +73,17 @@ Abrir en el navegador: `http://localhost:5000/apidocs/`
 
 ## 📚 Documentación
 
-- **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** - Documentación completa de endpoints
-- **[JWT_AUTHENTICATION.md](JWT_AUTHENTICATION.md)** - Guía de autenticación JWT
-- **[IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)** - Resumen técnico de implementación
+### API y Autenticación
+- **[API_DOCUMENTATION.md](Documentation/API_DOCUMENTATION.md)** - Documentación completa de endpoints
+- **[JWT_AUTHENTICATION.md](Documentation/JWT_AUTHENTICATION.md)** - Guía de autenticación JWT
+- **[IMPLEMENTATION_SUMMARY.md](Documentation/IMPLEMENTATION_SUMMARY.md)** - Resumen técnico de implementación
+
+### Sistema de Agente IA
+- **[AGENT_TOOLS_SUMMARY.md](AGENT_TOOLS_SUMMARY.md)** - 🤖 Resumen del sistema de tools
+- **[tools/QUICKSTART.md](tools/QUICKSTART.md)** - 🚀 Inicio rápido con tools
+- **[tools/README.md](tools/README.md)** - 📚 Guía completa del sistema de tools
+- **[tools/ARCHITECTURE.md](tools/ARCHITECTURE.md)** - 🏗️ Arquitectura del sistema
+- **[tools/EXAMPLES.md](tools/EXAMPLES.md)** - 💬 Ejemplos de conversaciones
 
 ## 🏗️ Estructura del Proyecto
 
@@ -82,9 +92,20 @@ iam-backend/
 ├── app.py                    # Aplicación principal
 ├── middleware/               # Middleware de autenticación
 ├── services/                 # Lógica de negocio
+│   └── agent_service.py      # Servicio del agente IA
 ├── controllers/              # Controladores HTTP
 ├── routes/                   # Definición de rutas
-└── lib/                      # Utilidades (DB, etc.)
+├── lib/                      # Utilidades (DB, agente IA)
+│   ├── agent.py              # Motor del agente IA
+│   └── db.py                 # Conexión a base de datos
+├── tools/                    # 🆕 Sistema de Tools del Agente
+│   ├── base_tool.py          # Clase base y registro
+│   ├── task_tools.py         # Tools de creación de tareas
+│   ├── query_tools.py        # Tools de consulta
+│   ├── task_action_tools.py  # Tools de acciones
+│   ├── TEMPLATE.py           # Plantilla para nuevas tools
+│   └── *.md                  # Documentación completa
+└── Documentation/            # Documentación del proyecto
 ```
 
 ## 🔐 Autenticación
@@ -130,12 +151,24 @@ curl -X GET http://localhost:5000/api/profile \
 - `GET /api/achievements` - Obtener logros
 - `GET /api/goals` - Obtener metas
 
-### Chat IA
+### Chat IA con Agente Inteligente
+- `POST /api/chat` - Enviar mensaje al agente IA
 - `GET /api/chat/sessions` - Obtener sesiones de chat
 - `POST /api/chat/sessions` - Crear sesión
 - `GET /api/chat/sessions/<id>/messages` - Obtener mensajes
 
-Ver documentación completa en [API_DOCUMENTATION.md](API_DOCUMENTATION.md)
+#### 🤖 Capacidades del Agente IA
+
+El agente puede realizar acciones automáticamente:
+- ✅ Crear tareas de mente y cuerpo cuando las recomienda
+- ✅ Consultar tareas pendientes del usuario
+- ✅ Obtener estadísticas y progreso
+- ✅ Completar y actualizar tareas
+- ✅ Responder en el idioma del usuario (español/inglés)
+
+Ver [AGENT_TOOLS_SUMMARY.md](AGENT_TOOLS_SUMMARY.md) para más información.
+
+Ver documentación completa en [API_DOCUMENTATION.md](Documentation/API_DOCUMENTATION.md)
 
 ## 🗄️ Base de Datos
 
@@ -248,6 +281,46 @@ from routes.my_routes import my_routes
 app.register_blueprint(my_routes)
 ```
 
+## 🤖 Sistema de Tools del Agente IA
+
+El agente IA incluye un sistema extensible de "tools" que le permiten realizar acciones en el sistema:
+
+### Tools Disponibles
+- 🧠 **create_mind_task** - Crea tareas mentales (lectura, meditación, etc.)
+- 💪 **create_body_task** - Crea tareas físicas (ejercicio, yoga, etc.)
+- 📋 **get_user_tasks** - Consulta tareas del usuario
+- 📊 **get_user_stats** - Obtiene estadísticas y progreso
+
+### Ejemplo de Uso
+```
+Usuario: "Me siento estresado"
+Agente: "Te recomiendo meditar 10 minutos. ¿Quieres que lo agregue a tus tareas?"
+Usuario: "Sí, por favor"
+Agente: [Crea la tarea automáticamente] ✅ "Listo! He agregado 
+        'Meditación de 10 minutos' a tus tareas."
+```
+
+### Agregar Nuevas Tools
+
+Es muy fácil extender el sistema. Ver [tools/QUICKSTART.md](tools/QUICKSTART.md) para una guía paso a paso.
+
+```python
+# 1. Crear en tools/my_tool.py
+class MyTool(BaseTool):
+    @property
+    def name(self) -> str:
+        return "my_action"
+    
+    def execute(self, **kwargs):
+        # Tu lógica aquí
+        return {"success": True, "message": "Done!"}
+
+# 2. Registrar en agent_service.py
+tools = [CreateMindTaskTool(), CreateBodyTaskTool(), MyTool()]
+```
+
+Ver documentación completa en [AGENT_TOOLS_SUMMARY.md](AGENT_TOOLS_SUMMARY.md).
+
 ## 📝 TODO
 
 - [ ] Tests unitarios
@@ -258,7 +331,7 @@ app.register_blueprint(my_routes)
 - [ ] Paginación en listados
 - [ ] Búsqueda y filtros avanzados
 - [ ] WebSockets para notificaciones en tiempo real
-- [ ] Integración con servicio de LLM para chat IA
+- [x] ✅ Integración con OpenAI para chat IA con function calling
 
 ## 👥 Contribuir
 
