@@ -111,7 +111,15 @@ def handle_preflight():
 # CORS configuration - Apply to all responses
 @app.after_request
 def after_request(response):
-    response.headers['Access-Control-Allow-Origin'] = 'http://localhost:5173'
+    # Allow multiple origins (localhost for dev, production URL from env)
+    allowed_origins = [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        os.environ.get('FRONTEND_URL', '')
+    ]
+    origin = request.headers.get('Origin')
+    if origin in allowed_origins:
+        response.headers['Access-Control-Allow-Origin'] = origin
     response.headers['Access-Control-Allow-Credentials'] = 'true'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
@@ -134,4 +142,8 @@ app.register_blueprint(stats_routes)
 app.register_blueprint(task_recommendation_routes)
 
 if __name__ == '__main__':
-    app.run()
+    # Get port from environment variable (Render assigns this)
+    port = int(os.environ.get('PORT', 5000))
+    # Set debug to False in production
+    debug_mode = os.environ.get('FLASK_ENV') != 'production'
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)
