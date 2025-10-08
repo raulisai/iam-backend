@@ -23,11 +23,21 @@ def create_profile(data):
         data (dict): Profile data.
     
     Returns:
-        dict: Created profile data.
+        dict: Created profile data or None if duplicate.
+        
+    Raises:
+        ValueError: If profile already exists for this user.
     """
     supabase = get_supabase()
-    res = supabase.from_('profiles').insert(data).execute()
-    return res.data[0] if res.data else None
+    try:
+        res = supabase.from_('profiles').insert(data).execute()
+        return res.data[0] if res.data else None
+    except Exception as e:
+        # Check if it's a duplicate key error (code 23505)
+        error_str = str(e)
+        if '23505' in error_str or 'duplicate key' in error_str.lower():
+            raise ValueError('Profile already exists for this user')
+        raise
 
 
 def update_profile(user_id, data):

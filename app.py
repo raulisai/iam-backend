@@ -13,6 +13,7 @@ from routes.mind_task_routes import mind_task_routes
 from routes.body_task_routes import body_task_routes
 from routes.achievement_routes import achievement_routes
 from routes.goal_routes import goal_routes
+from routes.goal_task_routes import goal_task_routes
 from routes.task_log_routes import task_log_routes
 from routes.failure_routes import failure_routes
 from routes.bot_rule_routes import bot_rule_routes
@@ -134,6 +135,7 @@ app.register_blueprint(mind_task_routes)
 app.register_blueprint(body_task_routes)
 app.register_blueprint(achievement_routes)
 app.register_blueprint(goal_routes)
+app.register_blueprint(goal_task_routes)
 app.register_blueprint(task_log_routes)
 app.register_blueprint(failure_routes)
 app.register_blueprint(bot_rule_routes)

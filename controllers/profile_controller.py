@@ -34,15 +34,29 @@ def create_user_profile(data):
     """
     user_id = request.user.get('user_id')
     
+    # Check if profile already exists
+    existing_profile = get_profile_by_user_id(user_id)
+    if existing_profile:
+        return jsonify({
+            'error': 'Profile already exists',
+            'message': 'User already has a profile. Use PUT to update instead.',
+            'profile': existing_profile
+        }), 409
+    
     # Add user_id to the profile data
     data['user_id'] = user_id
     
-    profile = create_profile(data)
-    
-    if profile is None:
-        return jsonify({'error': 'Failed to create profile'}), 500
-    
-    return jsonify(profile), 201
+    try:
+        profile = create_profile(data)
+        
+        if profile is None:
+            return jsonify({'error': 'Failed to create profile'}), 500
+        
+        return jsonify(profile), 201
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 409
+    except Exception as e:
+        return jsonify({'error': f'Failed to create profile: {str(e)}'}), 500
 
 
 def update_user_profile(data):
