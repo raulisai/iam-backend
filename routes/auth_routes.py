@@ -23,24 +23,6 @@ def hello_world():
     return 'Hello World!'
 
 
-@auth_routes.route('/getusers', methods=['GET'])
-def get_users():
-    """
-    Handle the user get endpoint and return all users.
-    ---
-    tags:
-      - Auth
-    responses:
-      200:
-        description: List of users
-        schema:
-          type: array
-          items:
-            $ref: '#/definitions/User'
-    """
-    return get_all_users()
-
-
 @auth_routes.route('/api/auth/login', methods=['POST', 'OPTIONS'])
 @auth_routes.route('/login', methods=['POST', 'OPTIONS'])
 def login():
