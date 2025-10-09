@@ -2,6 +2,10 @@
 from lib.db import get_supabase
 from datetime import datetime, timedelta
 from dateutil import rrule as rrule_module
+import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def get_goal_tasks(goal_id, user_id):
@@ -39,17 +43,38 @@ def get_goal_task_by_id(task_id):
 
 
 def create_goal_task(data):
-    """Create a new goal task.
+    """Create a new goal task with retry logic.
     
     Args:
         data (dict): Task data.
     
     Returns:
         dict: Created task.
+    
+    Raises:
+        Exception: If creation fails after retries.
     """
     supabase = get_supabase()
-    res = supabase.from_('goal_tasks').insert(data).execute()
-    return res.data[0] if res.data else None
+    max_retries = 3
+    retry_delay = 0.5
+    
+    for attempt in range(max_retries):
+        try:
+            res = supabase.from_('goal_tasks').insert(data).execute()
+            return res.data[0] if res.data else None
+        except Exception as e:
+            error_msg = str(e).lower()
+            # Don't retry on schema errors or client errors
+            if 'could not find' in error_msg or 'pgrst204' in error_msg:
+                logger.error(f"Schema error creating goal task: {e}")
+                raise
+            
+            if attempt < max_retries - 1:
+                logger.warning(f"Attempt {attempt + 1} failed creating goal task: {e}. Retrying...")
+                time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
+            else:
+                logger.error(f"Failed to create goal task after {max_retries} attempts: {e}")
+                raise
 
 
 def update_goal_task(task_id, data):

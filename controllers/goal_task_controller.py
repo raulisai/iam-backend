@@ -102,12 +102,21 @@ def create_new_goal_task(goal_id, data):
     allowed_fields = ['goal_id', 'user_id', 'title', 'description', 'type', 'required', 'weight', 'due_at', 'schedule_rrule']
     filtered_data = {key: value for key, value in data.items() if key in allowed_fields}
     
-    task = create_goal_task(filtered_data)
-    
-    if not task:
-        return jsonify({'error': 'Failed to create task'}), 500
-    
-    return jsonify(task), 201
+    try:
+        task = create_goal_task(filtered_data)
+        
+        if not task:
+            return jsonify({'error': 'Failed to create task'}), 500
+        
+        return jsonify(task), 201
+    except Exception as e:
+        error_msg = str(e)
+        if 'could not find' in error_msg.lower() or 'pgrst204' in error_msg.lower():
+            return jsonify({'error': 'Database schema error. Please contact support.', 'details': error_msg}), 500
+        elif 'winerror 10035' in error_msg.lower() or 'readerror' in error_msg.lower():
+            return jsonify({'error': 'Network connection issue. Please try again.'}), 503
+        else:
+            return jsonify({'error': 'Failed to create task', 'details': error_msg}), 500
 
 
 def update_task_data(task_id, data):
