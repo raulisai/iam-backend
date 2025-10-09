@@ -10,7 +10,7 @@ goal_task_recommendation_routes = Blueprint(
 )
 
 
-@goal_task_recommendation_routes.route('/<goal_id>/recommendations', methods=['GET', 'POST', 'OPTIONS'])
+@goal_task_recommendation_routes.route('/<goal_id>/recommendations', methods=['POST', 'OPTIONS'])
 @token_required
 def get_goal_recommendations(goal_id):
     """Get AI-powered task recommendations for a specific goal.
