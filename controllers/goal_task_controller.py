@@ -97,7 +97,12 @@ def create_new_goal_task(goal_id, data):
     if 'weight' not in data:
         data['weight'] = 1
     
-    task = create_goal_task(data)
+    # Only keep fields that exist in goal_tasks schema
+    # Valid fields: id, goal_id, user_id, title, description, type, required, weight, due_at, schedule_rrule, created_at
+    allowed_fields = ['goal_id', 'user_id', 'title', 'description', 'type', 'required', 'weight', 'due_at', 'schedule_rrule']
+    filtered_data = {key: value for key, value in data.items() if key in allowed_fields}
+    
+    task = create_goal_task(filtered_data)
     
     if not task:
         return jsonify({'error': 'Failed to create task'}), 500
