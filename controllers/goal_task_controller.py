@@ -16,7 +16,8 @@ from services.goal_task_service import (
     log_occurrence_action,
     get_goal_progress,
     get_occurrence_with_status,
-    get_occurrences_with_status
+    get_occurrences_with_status,
+    get_goal_progress_detailed
 )
 from services.goal_service import get_goal_by_id
 
@@ -241,7 +242,17 @@ def create_new_occurrence(task_id, data):
     if not occurrence:
         return jsonify({'error': 'Failed to create occurrence or already exists'}), 409
     
-    return jsonify(occurrence), 201
+    # Automatically log as completed when created (since creating = completing the task)
+    metadata = {}
+    if 'value' in data:
+        metadata['value'] = data['value']
+    
+    log_occurrence_action(occurrence['id'], user_id, 'completed', metadata)
+    
+    # Return occurrence with completed status
+    occurrence_with_status = get_occurrence_with_status(occurrence['id'])
+    
+    return jsonify(occurrence_with_status or occurrence), 201
 
 
 def generate_occurrences(task_id):
@@ -422,5 +433,29 @@ def get_progress_for_goal(goal_id):
         return jsonify({'error': 'Unauthorized'}), 403
     
     progress = get_goal_progress(goal_id)
+    
+    return jsonify(progress), 200
+
+
+def get_progress_detailed_for_goal(goal_id):
+    """Get detailed progress for a goal (for debugging).
+    
+    Args:
+        goal_id (str): Goal ID.
+    
+    Returns:
+        tuple: JSON response with detailed progress data and status code.
+    """
+    user_id = request.user.get('user_id')
+    
+    # Verify goal exists and belongs to user
+    goal = get_goal_by_id(goal_id)
+    if not goal:
+        return jsonify({'error': 'Goal not found'}), 404
+    
+    if goal.get('user_id') != user_id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    progress = get_goal_progress_detailed(goal_id)
     
     return jsonify(progress), 200

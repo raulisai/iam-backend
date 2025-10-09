@@ -149,19 +149,26 @@ def create_task_occurrence(data):
     """Create a new task occurrence.
     
     Args:
-        data (dict): Occurrence data (task_id, scheduled_at).
+        data (dict): Occurrence data (task_id, scheduled_at, optional: value for metadata).
     
     Returns:
         dict: Created occurrence or None if already exists.
     """
     supabase = get_supabase()
     try:
-        res = supabase.from_('task_occurrences').insert(data).execute()
+        # Only keep fields that exist in the task_occurrences table
+        # Note: 'value' and 'notes' are stored in logs, not in occurrences table
+        allowed_fields = ['task_id', 'scheduled_at', 'completed_at', 'skipped_at']
+        filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
+        
+        res = supabase.from_('task_occurrences').insert(filtered_data).execute()
         return res.data[0] if res.data else None
     except Exception as e:
         # Handle unique constraint violation
         if 'duplicate key' in str(e).lower():
+            logger.warning(f"Duplicate occurrence for task_id={data.get('task_id')}, scheduled_at={data.get('scheduled_at')}")
             return None
+        logger.error(f"Error creating occurrence: {e}")
         raise
 
 
@@ -284,14 +291,67 @@ def get_goal_progress(goal_id):
         goal_id (str): Goal ID.
     
     Returns:
-        dict: Progress data with percentage.
+        dict: Progress data with percentage and details.
     """
     supabase = get_supabase()
+    
+    # Try to get from view first
     res = supabase.from_('goal_progress_view')\
         .select('*')\
         .eq('goal_id', goal_id)\
         .execute()
-    return res.data[0] if res.data else {'goal_id': goal_id, 'progress_percent': 0}
+    
+    if res.data and len(res.data) > 0:
+        progress_data = res.data[0]
+    else:
+        progress_data = {'goal_id': goal_id, 'progress_percent': 0}
+    
+    # Get additional details: total tasks, completed occurrences, etc.
+    try:
+        # Get all tasks for this goal
+        tasks = supabase.from_('goal_tasks')\
+            .select('id, title, required, weight')\
+            .eq('goal_id', goal_id)\
+            .execute()
+        
+        total_tasks = len(tasks.data) if tasks.data else 0
+        
+        # Get all occurrences with their status
+        completed_count = 0
+        total_occurrences = 0
+        
+        if tasks.data:
+            for task in tasks.data:
+                # Get occurrences for this task
+                occurrences = supabase.from_('task_occurrences')\
+                    .select('id')\
+                    .eq('task_id', task['id'])\
+                    .execute()
+                
+                if occurrences.data:
+                    for occ in occurrences.data:
+                        total_occurrences += 1
+                        # Check if this occurrence is completed
+                        logs = supabase.from_('task_logs')\
+                            .select('action')\
+                            .eq('task_table', 'task_occurrences')\
+                            .eq('task_id', occ['id'])\
+                            .order('timestamp', desc=True)\
+                            .limit(1)\
+                            .execute()
+                        
+                        if logs.data and len(logs.data) > 0:
+                            if logs.data[0]['action'] == 'completed':
+                                completed_count += 1
+        
+        progress_data['total_tasks'] = total_tasks
+        progress_data['total_occurrences'] = total_occurrences
+        progress_data['completed_occurrences'] = completed_count
+        
+    except Exception as e:
+        logger.error(f"Error getting progress details for goal {goal_id}: {e}")
+    
+    return progress_data
 
 
 def get_occurrence_with_status(occurrence_id):
@@ -353,3 +413,121 @@ def get_occurrences_with_status(task_id, start_date=None, end_date=None):
                 occurrence['last_value'] = latest_log['metadata'].get('value')
     
     return occurrences
+
+
+def get_goal_progress_detailed(goal_id):
+    """Get detailed progress information for debugging.
+    
+    Args:
+        goal_id (str): Goal ID.
+    
+    Returns:
+        dict: Detailed progress data including tasks, occurrences, and logs.
+    """
+    supabase = get_supabase()
+    
+    # Get goal info
+    goal_res = supabase.from_('goals').select('*').eq('id', goal_id).execute()
+    goal = goal_res.data[0] if goal_res.data else None
+    
+    if not goal:
+        return {'error': 'Goal not found'}
+    
+    # Get all tasks
+    tasks = supabase.from_('goal_tasks')\
+        .select('*')\
+        .eq('goal_id', goal_id)\
+        .execute()
+    
+    tasks_detail = []
+    total_occurrences = 0
+    completed_occurrences = 0
+    
+    for task in (tasks.data or []):
+        # Get occurrences for this task
+        occurrences = supabase.from_('task_occurrences')\
+            .select('*')\
+            .eq('task_id', task['id'])\
+            .execute()
+        
+        task_occurrences = []
+        for occ in (occurrences.data or []):
+            total_occurrences += 1
+            
+            # Get logs for this occurrence
+            logs = supabase.from_('task_logs')\
+                .select('*')\
+                .eq('task_table', 'task_occurrences')\
+                .eq('task_id', occ['id'])\
+                .order('timestamp', desc=True)\
+                .execute()
+            
+            status = 'pending'
+            last_action = None
+            last_value = None
+            
+            if logs.data and len(logs.data) > 0:
+                latest = logs.data[0]
+                last_action = latest.get('action')
+                status = last_action
+                if latest.get('metadata'):
+                    last_value = latest['metadata'].get('value')
+                
+                if last_action == 'completed':
+                    completed_occurrences += 1
+            
+            task_occurrences.append({
+                'id': occ['id'],
+                'scheduled_at': occ['scheduled_at'],
+                'status': status,
+                'last_action': last_action,
+                'last_value': last_value,
+                'logs_count': len(logs.data) if logs.data else 0
+            })
+        
+        tasks_detail.append({
+            'id': task['id'],
+            'title': task['title'],
+            'type': task.get('type'),
+            'required': task.get('required', True),
+            'weight': task.get('weight', 1),
+            'occurrences_count': len(occurrences.data) if occurrences.data else 0,
+            'occurrences': task_occurrences
+        })
+    
+    # Get progress from view
+    progress_view = supabase.from_('goal_progress_view')\
+        .select('*')\
+        .eq('goal_id', goal_id)\
+        .execute()
+    
+    progress_percent = 0
+    if progress_view.data and len(progress_view.data) > 0:
+        progress_percent = progress_view.data[0].get('progress_percent', 0)
+    
+    # Calculate manual progress
+    manual_progress = 0
+    if total_occurrences > 0:
+        if goal.get('target_value') and float(goal['target_value']) > 0:
+            # Sum all values from completed occurrences
+            total_value = 0
+            for task in tasks_detail:
+                for occ in task['occurrences']:
+                    if occ['status'] == 'completed':
+                        total_value += float(occ.get('last_value') or 1)
+            manual_progress = min(100, (total_value / float(goal['target_value'])) * 100)
+        else:
+            # Percentage based on completed occurrences
+            manual_progress = (completed_occurrences / total_occurrences) * 100
+    
+    return {
+        'goal_id': goal_id,
+        'goal_title': goal.get('title'),
+        'target_value': goal.get('target_value'),
+        'progress_from_view': progress_percent,
+        'manual_calculation': manual_progress,
+        'total_tasks': len(tasks.data) if tasks.data else 0,
+        'total_occurrences': total_occurrences,
+        'completed_occurrences': completed_occurrences,
+        'tasks': tasks_detail
+    }

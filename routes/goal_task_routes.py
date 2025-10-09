@@ -14,7 +14,8 @@ from controllers.goal_task_controller import (
     delete_occurrence,
     log_action_on_occurrence,
     get_logs_for_occurrence,
-    get_progress_for_goal
+    get_progress_for_goal,
+    get_progress_detailed_for_goal
 )
 
 goal_task_routes = Blueprint('goal_tasks', __name__, url_prefix='/api/goals')
@@ -638,6 +639,62 @@ def get_goal_progress(goal_id):
     if request.method == 'OPTIONS':
         return jsonify({}), 200
     return get_progress_for_goal(goal_id)
+
+
+@goal_task_routes.route('/<goal_id>/progress/detailed', methods=['GET', 'OPTIONS'])
+@token_required
+def get_goal_progress_detailed_route(goal_id):
+    """Get detailed progress for a goal (for debugging).
+    ---
+    tags:
+      - Goal Tasks
+    parameters:
+      - in: header
+        name: Authorization
+        description: JWT token (Bearer <token>)
+        required: true
+        type: string
+      - name: goal_id
+        in: path
+        required: true
+        type: string
+        format: uuid
+        description: Goal ID
+    responses:
+      200:
+        description: Detailed goal progress data
+        schema:
+          type: object
+          properties:
+            goal_id:
+              type: string
+              format: uuid
+            progress_from_view:
+              type: number
+              description: Progress from database view
+            manual_calculation:
+              type: number
+              description: Manually calculated progress
+            total_tasks:
+              type: integer
+            total_occurrences:
+              type: integer
+            completed_occurrences:
+              type: integer
+            tasks:
+              type: array
+              items:
+                type: object
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+      404:
+        description: Goal not found
+    """
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    return get_progress_detailed_for_goal(goal_id)
 
 
 # ===== SWAGGER DEFINITIONS =====
