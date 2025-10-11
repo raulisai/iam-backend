@@ -12,6 +12,7 @@ Backend completo desarrollado en Flask con autenticación JWT, gestión de tarea
 - ✅ **Sistema de Tools Extensible** - El agente puede crear tareas, consultar info y más
 - ✅ **Bot Rules** - Sistema de reglas automáticas configurable
 - ✅ **Registro de Actividades** - Logs y tracking de fallos
+- ✅ **Time Optimizer** - Sistema inteligente de optimización de horarios y tareas
 - ✅ **Swagger UI** - Documentación interactiva de API
 
 ## 📋 Requisitos
@@ -85,6 +86,12 @@ Abrir en el navegador: `http://localhost:5000/apidocs/`
 - **[tools/ARCHITECTURE.md](tools/ARCHITECTURE.md)** - 🏗️ Arquitectura del sistema
 - **[tools/EXAMPLES.md](tools/EXAMPLES.md)** - 💬 Ejemplos de conversaciones
 
+### Sistema de Optimización de Tiempo ⚡ NUEVO
+- **[TIME_OPTIMIZER_QUICKSTART.md](Documentation/TIME_OPTIMIZER_QUICKSTART.md)** - ⚡ Guía rápida de uso
+- **[TIME_OPTIMIZER_SYSTEM.md](Documentation/TIME_OPTIMIZER_SYSTEM.md)** - 📖 Documentación técnica completa
+- **[TIME_OPTIMIZER_DIAGRAMS.md](Documentation/TIME_OPTIMIZER_DIAGRAMS.md)** - 📊 Diagramas y visualizaciones
+- **[TIME_OPTIMIZER_CURL_EXAMPLES.md](Documentation/TIME_OPTIMIZER_CURL_EXAMPLES.md)** - 🧪 Ejemplos cURL
+
 ## 🏗️ Estructura del Proyecto
 
 ```
@@ -157,6 +164,12 @@ curl -X GET http://localhost:5000/api/profile \
 - `POST /api/chat/sessions` - Crear sesión
 - `GET /api/chat/sessions/<id>/messages` - Obtener mensajes
 
+### Time Optimizer ⚡ NUEVO
+- `GET /api/time-optimizer/available-time` - Calcular tiempo disponible
+- `GET /api/time-optimizer/optimize-day` - Generar horario optimizado del día
+- `GET /api/time-optimizer/tasks-now` - Obtener tareas recomendadas para AHORA
+- `GET /api/time-optimizer/remaining-day` - Ver qué falta del día
+
 #### 🤖 Capacidades del Agente IA
 
 El agente puede realizar acciones automáticamente:
@@ -167,6 +180,80 @@ El agente puede realizar acciones automáticamente:
 - ✅ Responder en el idioma del usuario (español/inglés)
 
 Ver [AGENT_TOOLS_SUMMARY.md](AGENT_TOOLS_SUMMARY.md) para más información.
+
+### ⚡ Time Optimizer - Optimización Inteligente de Horarios
+
+El sistema de optimización de tiempo es un **algoritmo sofisticado** que maximiza tu productividad calculando el tiempo real disponible y distribuyendo tareas de forma óptima.
+
+#### 🎯 ¿Qué hace?
+
+1. **Calcula tu tiempo disponible real**
+   - Resta horas fijas: trabajo (8h), sueño (8h), cuidado personal (2h)
+   - Identifica slots productivos: mañana (6am-9am) y tarde (5pm-10pm)
+   
+2. **Prioriza tareas inteligentemente**
+   - **Goals con deadline cercano** → Máxima prioridad
+   - **Goals regulares** → Alta prioridad
+   - **Mind/Body tasks** → Media prioridad
+   
+3. **Distribuye tareas óptimamente**
+   - Tareas de concentración (goals/mind) → Mañana
+   - Tareas físicas (body) → Tarde
+   - Respeta límite semanal de horas de estudio
+
+#### 🚀 Casos de Uso
+
+```python
+# 1. Planificar el día (por la mañana)
+GET /api/time-optimizer/optimize-day
+# → Lista completa de tareas con horarios específicos
+
+# 2. "¿Qué hago ahora?" (cualquier momento)
+GET /api/time-optimizer/tasks-now
+# → Top 3-5 tareas recomendadas para ESTE momento
+
+# 3. "¿Qué me falta?" (revisar progreso)
+GET /api/time-optimizer/remaining-day
+# → Tareas pendientes y si puedes completar todo hoy
+```
+
+#### 📊 Ejemplo Real
+
+**Input**: Usuario con 5 tareas pendientes
+- 🎯 Proyecto ML (90min) - vence mañana
+- 🎯 Revisar código (45min) - vence en 2 días
+- 🎯 Estudiar capítulo 3 (60min)
+- 🧘 Meditación (30min)
+- 💪 Gym (60min)
+
+**Output del Algoritmo**:
+```
+MAÑANA (6:00-9:00):
+  06:00-07:30 | Proyecto ML (URGENTE - vence mañana)
+
+TARDE (17:00-22:00):
+  17:00-17:45 | Revisar código
+  18:00-19:00 | Estudiar capítulo 3
+  19:15-19:45 | Meditación
+  20:00-21:00 | Gym
+
+Scores:
+  ✓ Efficiency: 67.9% (tiempo bien utilizado)
+  ✓ Balance: 95.0% (excelente distribución)
+  ✓ Productivity: 76.4% (buena productividad)
+```
+
+#### 🔥 Características Clave
+
+- ✅ **Considera deadlines**: Tareas urgentes van primero automáticamente
+- ✅ **Optimiza por hora del día**: Tasks mentales por la mañana, físicas por la tarde
+- ✅ **Respeta límites**: No excede tus horas semanales disponibles
+- ✅ **Incluye buffers**: 15 minutos entre tareas para descansar
+- ✅ **Scoring inteligente**: Combina tipo de tarea, urgencia y duración
+
+#### 📚 Documentación Completa
+
+Ver [TIME_OPTIMIZER_QUICKSTART.md](Documentation/TIME_OPTIMIZER_QUICKSTART.md) para empezar.
 
 Ver documentación completa en [API_DOCUMENTATION.md](Documentation/API_DOCUMENTATION.md)
 

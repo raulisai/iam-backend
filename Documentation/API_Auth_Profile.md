@@ -91,6 +91,12 @@ Authorization: Bearer <your-jwt-token>
   "weight_kg": 75.5,
   "height_cm": 175,
   "preferred_language": "es",  // "es", "en", etc.
+  "hours_available_to_week": 40,
+  "work_schedules": "9:00-17:00",
+  "current_status": "active",
+  "hours_used_to_week": 0,
+  "time_dead": 0,  // Time dead or unproductive time
+  "day_work": "L,M,M,J,V",  // Work days (D,L,M,M,J,V,S format)
   "created_at": "2025-10-01T00:00:00Z",
   "updated_at": "2025-10-01T00:00:00Z"
 }
@@ -124,7 +130,13 @@ Content-Type: application/json
   "gender": "string",  // Optional: "male", "female", "other"
   "weight_kg": "number",  // Optional: Weight in kilograms
   "height_cm": "number",  // Optional: Height in centimeters
-  "preferred_language": "string"  // Optional: Language code (e.g., "es", "en")
+  "preferred_language": "string",  // Optional: Language code (e.g., "es", "en")
+  "hours_available_to_week": "number",  // Optional: Available hours per week
+  "work_schedules": "string",  // Optional: Work schedule (e.g., "9:00-17:00")
+  "current_status": "string",  // Optional: Current status (e.g., "active", "busy")
+  "hours_used_to_week": "number",  // Optional: Hours used in the week
+  "time_dead": "number",  // Optional: Time dead or unproductive time
+  "day_work": "string"  // Optional: Work days (D,L,M,M,J,V,S format)
 }
 ```
 
@@ -139,6 +151,12 @@ Content-Type: application/json
   "weight_kg": 75.5,
   "height_cm": 175,
   "preferred_language": "es",
+  "hours_available_to_week": 40,
+  "work_schedules": "9:00-17:00",
+  "current_status": "active",
+  "hours_used_to_week": 0,
+  "time_dead": 0,
+  "day_work": "L,M,M,J,V",
   "created_at": "2025-10-02T00:00:00Z",
   "updated_at": "2025-10-02T00:00:00Z"
 }
@@ -173,7 +191,13 @@ Content-Type: application/json
   "gender": "string",  // Optional: "male", "female", "other"
   "weight_kg": "number",  // Optional: Weight in kilograms
   "height_cm": "number",  // Optional: Height in centimeters
-  "preferred_language": "string"  // Optional: Language code
+  "preferred_language": "string",  // Optional: Language code
+  "hours_available_to_week": "number",  // Optional: Available hours per week
+  "work_schedules": "string",  // Optional: Work schedule
+  "current_status": "string",  // Optional: Current status
+  "hours_used_to_week": "number",  // Optional: Hours used in the week
+  "time_dead": "number",  // Optional: Time dead or unproductive time
+  "day_work": "string"  // Optional: Work days (D,L,M,M,J,V,S format)
 }
 ```
 
@@ -188,6 +212,12 @@ Content-Type: application/json
   "weight_kg": 75.5,
   "height_cm": 175,
   "preferred_language": "en",
+  "hours_available_to_week": 45,
+  "work_schedules": "10:00-18:00",
+  "current_status": "busy",
+  "hours_used_to_week": 30.5,
+  "time_dead": 5.0,
+  "day_work": "L,M,M,J,V,S",
   "created_at": "2025-10-01T00:00:00Z",
   "updated_at": "2025-10-02T00:00:00Z"
 }
@@ -247,6 +277,12 @@ All endpoints may return these errors:
 - **weight_kg**: Number, positive
 - **height_cm**: Number, positive
 - **preferred_language**: ISO 639-1 language code
+- **hours_available_to_week**: Number, positive, hours available per week
+- **work_schedules**: String, work schedule format (e.g., "9:00-17:00")
+- **current_status**: String, user's current status
+- **hours_used_to_week**: Number, hours used in the current week
+- **time_dead**: Number, time dead or unproductive time tracked
+- **day_work**: String, work days in format D,L,M,M,J,V,S (D=Domingo, L=Lunes, M=Martes, M=Miércoles, J=Jueves, V=Viernes, S=Sábado)
 
 ## Integration Flow Example
 1. User logs in → Store token

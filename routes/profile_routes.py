@@ -67,6 +67,12 @@ def get_profile():
             hours_used_to_week:
               type: number
               example: 25.5
+            time_dead:
+              type: number
+              example: 0
+            day_work:
+              type: string
+              example: "L,M,M,J,V"
             created_at:
               type: string
               format: date-time
@@ -146,6 +152,14 @@ def create_profile():
               type: number
               example: 0
               description: Horas usadas en la semana
+            time_dead:
+              type: number
+              example: 0
+              description: Tiempo muerto o no productivo
+            day_work:
+              type: string
+              example: "L,M,M,J,V"
+              description: Días de trabajo en la semana (D,L,M,M,J,V,S)
     responses:
       201:
         description: Profile created successfully
@@ -179,6 +193,10 @@ def create_profile():
               type: string
             hours_used_to_week:
               type: number
+            time_dead:
+              type: number
+            day_work:
+              type: string
             created_at:
               type: string
               format: date-time
@@ -248,6 +266,12 @@ def update_profile():
             hours_used_to_week:
               type: number
               example: 30.5
+            time_dead:
+              type: number
+              example: 5.0
+            day_work:
+              type: string
+              example: "L,M,M,J,V,S"
     responses:
       200:
         description: Profile updated successfully
@@ -281,6 +305,10 @@ def update_profile():
               type: string
             hours_used_to_week:
               type: number
+            time_dead:
+              type: number
+            day_work:
+              type: string
             created_at:
               type: string
               format: date-time
