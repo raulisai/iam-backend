@@ -347,7 +347,7 @@ def create():
               example: 75
               default: 0
               description: XP points awarded upon completion
-            descr:
+            desc:
               type: string
               example: "Sesión de meditación guiada de 15 minutos"
               description: Description of the template
@@ -381,7 +381,7 @@ def create():
               type: integer
             reward_xp:
               type: integer
-            descr:
+            desc:
               type: string
             default_params:
               type: object

@@ -1,5 +1,6 @@
 flask==3.0.0
 flask-cors==4.0.0
+flask-sse==1.0.0
 flasgger==0.9.7.1
 supabase==2.10.0
 pyjwt==2.8.0
@@ -10,3 +11,4 @@ gunicorn==21.2.0
 python-dateutil==2.8.2
 requests==2.26.0
 pytz==2024.1
+redis==6.4.0
