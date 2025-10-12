@@ -11,6 +11,7 @@ from lib.db import get_supabase
 from datetime import datetime, timedelta, time as dt_time
 from typing import Dict, List, Any, Tuple, Optional
 import json
+import pytz
 
 
 # ==================== CONSTANTES DEL ALGORITMO ====================
@@ -716,99 +717,305 @@ def optimize_daily_schedule(user_id: str, target_date: str = None, current_time:
     }
 
 
+def get_day_name_abbreviation(weekday: int) -> str:
+    """Convert weekday number to Spanish abbreviation.
+    
+    Args:
+        weekday: Day of week (0=Monday, 6=Sunday)
+        
+    Returns:
+        Spanish abbreviation (L,M,M,J,V,S,D)
+    """
+    day_map = {
+        0: 'L',  # Lunes
+        1: 'M',  # Martes
+        2: 'M',  # Miércoles
+        3: 'J',  # Jueves
+        4: 'V',  # Viernes
+        5: 'S',  # Sábado
+        6: 'D'   # Domingo
+    }
+    return day_map.get(weekday, 'L')
+
+
+def is_working_day(current_date: datetime, day_work: str) -> bool:
+    """Check if current date is a working day.
+    
+    Args:
+        current_date: Date to check
+        day_work: Work days string (e.g., "L,M,M,J,V")
+        
+    Returns:
+        True if it's a working day
+    """
+    if not day_work:
+        # Default to Monday-Friday if not specified
+        return current_date.weekday() < 5
+    
+    current_day_abbr = get_day_name_abbreviation(current_date.weekday())
+    return current_day_abbr in day_work.split(',')
+
+
 def get_tasks_for_current_moment(user_id: str) -> Dict[str, Any]:
     """Get tasks that should be done RIGHT NOW based on current time.
     
     This endpoint considers:
+    - User's timezone
+    - Work days from profile (day_work)
+    - Time dead from profile
     - Current time of day
-    - Remaining time until end of productive hours
+    - Remaining time calculation: (24 - work_hours - time_dead)
     - Task urgency and priority
-    - Quick wins vs. longer tasks
     
     Args:
         user_id: User ID
         
     Returns:
-        Tasks recommended for immediate action
+        Tasks organized by type with correct time calculations
     """
-    current_time = datetime.utcnow()
-    current_hour = current_time.hour
+    supabase = get_supabase()
     
-    # Get profile info
-    profile_info = get_user_profile_info(user_id)
+    # Get user profile
+    profile_res = supabase.from_('profiles').select('*').eq('user_id', user_id).execute()
     
-    if 'error' in profile_info:
-        return profile_info
-    
-    # Determine current time slot
-    work_schedule = profile_info['profile']['work_schedule']
-    (work_start_h, _), (work_end_h, _) = parse_time_range(work_schedule)
-    
-    is_morning = current_hour < work_start_h
-    is_evening = current_hour >= work_end_h
-    is_work_hours = not is_morning and not is_evening
-    
-    if is_work_hours:
+    if not profile_res.data:
         return {
-            'user_id': user_id,
-            'current_time': current_time.isoformat(),
-            'message': 'Currently in work hours. No tasks scheduled.',
-            'time_slot': 'work_hours',
-            'next_available_slot': f"Evening at {work_end_h:02d}:00",
-            'tasks': []
+            'error': 'Profile not found',
+            'message': 'Please create a profile first',
+            'user_id': user_id
         }
     
-    # Calculate remaining time in current slot
-    if is_morning:
-        remaining_minutes = (work_start_h - current_hour) * 60 - current_time.minute - 60  # -60 for getting ready
-        time_slot = 'morning'
-    else:  # evening
-        remaining_minutes = (DEFAULT_SLEEP_TIME - current_hour) * 60 - current_time.minute
-        time_slot = 'evening'
+    profile = profile_res.data[0]
     
-    remaining_minutes = max(0, remaining_minutes)
+    # Get timezone (default to America/Mexico_City)
+    user_timezone = profile.get('timezone', 'America/Mexico_City')
+    try:
+        tz = pytz.timezone(user_timezone)
+        # Get current time in user's timezone
+        current_time_utc = datetime.utcnow().replace(tzinfo=pytz.UTC)
+        current_time = current_time_utc.astimezone(tz)
+    except:
+        # Fallback if pytz not available or timezone invalid
+        current_time = datetime.utcnow()
     
-    # Get today's schedule
-    today_str = current_time.date().isoformat()
-    full_schedule = optimize_daily_schedule(user_id, today_str, current_time)
+    # Get profile fields
+    day_work = profile.get('day_work', 'L,M,M,J,V')  # Default Monday-Friday
+    time_dead = profile.get('time_dead', 9)  # Default 9 hours
+    work_schedules = profile.get('work_schedules', '9:00-17:00')
+    hours_available_to_week = profile.get('hours_available_to_week', 40)
+    hours_used_to_week = profile.get('hours_used_to_week', 0)
     
-    if 'error' in full_schedule:
-        return full_schedule
+    # Check if today is a working day
+    is_work_day = is_working_day(current_time, day_work)
     
-    # Filter tasks for current time slot that haven't started yet
-    current_slot_tasks = full_schedule['schedule'][time_slot]['tasks']
+    # Calculate work hours
+    if is_work_day:
+        (work_start_h, work_start_m), (work_end_h, work_end_m) = parse_time_range(work_schedules)
+        work_hours = calculate_duration_hours((work_start_h, work_start_m), (work_end_h, work_end_m))
+    else:
+        # No work on non-working days
+        work_hours = 0
     
-    # Filter to only future tasks
-    available_now = []
-    for task in current_slot_tasks:
-        task_start = datetime.fromisoformat(task['start_time'].replace('Z', '+00:00'))
-        if task_start >= current_time:
-            # Calculate if there's enough time
-            task_duration = task['estimated_duration_minutes']
-            if task_duration <= remaining_minutes:
-                available_now.append(task)
+    # Calculate available hours: (24 - work_hours - time_dead)
+    available_hours_today = 24 - work_hours - time_dead
+    available_minutes_today = available_hours_today * 60
     
-    # Sort by priority score
-    available_now.sort(key=lambda x: x['priority_score'], reverse=True)
+    # Calculate remaining hours in the week
+    remaining_hours_week = hours_available_to_week - hours_used_to_week
+    remaining_minutes_week = remaining_hours_week * 60
     
-    # Organize ALL available tasks by type
-    goal_tasks = [t for t in available_now if t['type'] == 'goal']
-    mind_tasks = [t for t in available_now if t['type'] == 'mind']
-    body_tasks = [t for t in available_now if t['type'] == 'body']
+    # Calculate remaining time TODAY from current time
+    # Productive day ends at midnight (00:00 of next day)
+    if current_time.hour >= 0 and current_time.hour < 6:
+        # If it's between midnight and 6 AM, consider day is over
+        remaining_minutes_today = 0
+    else:
+        # Calculate time until midnight
+        end_of_day = (current_time + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        time_diff = end_of_day - current_time
+        remaining_minutes_today = int(time_diff.total_seconds() / 60)
     
-    # Quick wins across all types
-    quick_wins = [t for t in available_now if t['estimated_duration_minutes'] <= 30]
+    # Get all pending tasks
+    tasks_by_type = get_pending_tasks_all_types(user_id, current_time.date().isoformat(), include_unscheduled=True)
     
+    # Combine and calculate priority scores
+    all_goal_tasks = []
+    all_mind_tasks = []
+    all_body_tasks = []
+    
+    for task in tasks_by_type['goals']:
+        task['priority_score'] = calculate_task_priority_score(task, current_time)
+        all_goal_tasks.append(task)
+    
+    for task in tasks_by_type['mind']:
+        task['priority_score'] = calculate_task_priority_score(task, current_time)
+        all_mind_tasks.append(task)
+    
+    for task in tasks_by_type['body']:
+        task['priority_score'] = calculate_task_priority_score(task, current_time)
+        all_body_tasks.append(task)
+    
+    # Sort each type by priority
+    all_goal_tasks.sort(key=lambda x: x['priority_score'], reverse=True)
+    all_mind_tasks.sort(key=lambda x: x['priority_score'], reverse=True)
+    all_body_tasks.sort(key=lambda x: x['priority_score'], reverse=True)
+    
+    # Determine time slot
+    current_hour = current_time.hour
+    if current_hour < 12:
+        current_time_slot = 'morning'
+    elif current_hour < 18:
+        current_time_slot = 'afternoon'
+    else:
+        current_time_slot = 'evening'
+    
+    # AGGRESSIVE SCHEDULING: Fill as much time as possible
+    scheduled_goal_tasks = []
+    scheduled_mind_tasks = []
+    scheduled_body_tasks = []
+    
+    schedule_start_time = current_time
+    available_time_buffer = remaining_minutes_today
+    
+    # Priority 1: Schedule ALL GOAL tasks that fit (most important)
+    # Goals are the priority - schedule as many as possible
+    for task in all_goal_tasks:
+        duration = task.get('estimated_duration_minutes', 60)
+        duration_with_buffer = duration + 10  # Reduced buffer to 10 min
+        
+        # Check if task fits in remaining time
+        if duration_with_buffer <= available_time_buffer:
+            start_time = schedule_start_time
+            end_time = start_time + timedelta(minutes=duration)
+            
+            scheduled_goal_tasks.append({
+                **task,
+                'start_time': start_time.isoformat(),
+                'end_time': end_time.isoformat(),
+                'time_slot': current_time_slot
+            })
+            
+            schedule_start_time = end_time + timedelta(minutes=10)
+            available_time_buffer -= duration_with_buffer
+        # If task doesn't fit with buffer, try without buffer
+        elif duration <= available_time_buffer:
+            start_time = schedule_start_time
+            end_time = start_time + timedelta(minutes=duration)
+            
+            scheduled_goal_tasks.append({
+                **task,
+                'start_time': start_time.isoformat(),
+                'end_time': end_time.isoformat(),
+                'time_slot': current_time_slot
+            })
+            
+            schedule_start_time = end_time
+            available_time_buffer -= duration
+    
+    # Priority 2: Fill remaining time with MIND tasks (maximize use)
+    # Increase limit and be more aggressive
+    for i, task in enumerate(all_mind_tasks):
+        if available_time_buffer < 15:  # Stop only if less than 15 min left
+            break
+            
+        duration = task.get('estimated_duration_minutes', 30)
+        duration_with_buffer = duration + 10
+        
+        if duration_with_buffer <= available_time_buffer:
+            start_time = schedule_start_time
+            end_time = start_time + timedelta(minutes=duration)
+            
+            scheduled_mind_tasks.append({
+                **task,
+                'start_time': start_time.isoformat(),
+                'end_time': end_time.isoformat(),
+                'time_slot': current_time_slot
+            })
+            
+            schedule_start_time = end_time + timedelta(minutes=10)
+            available_time_buffer -= duration_with_buffer
+        elif duration <= available_time_buffer:
+            # Try without buffer
+            start_time = schedule_start_time
+            end_time = start_time + timedelta(minutes=duration)
+            
+            scheduled_mind_tasks.append({
+                **task,
+                'start_time': start_time.isoformat(),
+                'end_time': end_time.isoformat(),
+                'time_slot': current_time_slot
+            })
+            
+            schedule_start_time = end_time
+            available_time_buffer -= duration
+    
+    # Priority 3: Fill remaining time with BODY tasks
+    for i, task in enumerate(all_body_tasks):
+        if available_time_buffer < 15:  # Stop only if less than 15 min left
+            break
+            
+        duration = task.get('estimated_duration_minutes', 30)
+        duration_with_buffer = duration + 10
+        
+        if duration_with_buffer <= available_time_buffer:
+            start_time = schedule_start_time
+            end_time = start_time + timedelta(minutes=duration)
+            
+            scheduled_body_tasks.append({
+                **task,
+                'start_time': start_time.isoformat(),
+                'end_time': end_time.isoformat(),
+                'time_slot': current_time_slot
+            })
+            
+            schedule_start_time = end_time + timedelta(minutes=10)
+            available_time_buffer -= duration_with_buffer
+        elif duration <= available_time_buffer:
+            # Try without buffer
+            start_time = schedule_start_time
+            end_time = start_time + timedelta(minutes=duration)
+            
+            scheduled_body_tasks.append({
+                **task,
+                'start_time': start_time.isoformat(),
+                'end_time': end_time.isoformat(),
+                'time_slot': current_time_slot
+            })
+            
+            schedule_start_time = end_time
+            available_time_buffer -= duration
+    
+    # Calculate total time for scheduled tasks
+    total_task_minutes = sum(t.get('estimated_duration_minutes', 60) for t in scheduled_goal_tasks)
+    total_task_minutes += sum(t.get('estimated_duration_minutes', 30) for t in scheduled_mind_tasks)
+    total_task_minutes += sum(t.get('estimated_duration_minutes', 30) for t in scheduled_body_tasks)
+    
+    # Calculate how much time is remaining after scheduling
+    remaining_after_scheduling = remaining_minutes_today - total_task_minutes
+    utilization_percentage = (total_task_minutes / remaining_minutes_today * 100) if remaining_minutes_today > 0 else 0
+    
+    # Build response in requested format
     return {
-        'user_id': user_id,
+        'body_tasks': scheduled_body_tasks,
+        'goal_tasks': scheduled_goal_tasks,
+        'mind_tasks': scheduled_mind_tasks,
         'current_time': current_time.isoformat(),
-        'time_slot': time_slot,
-        'remaining_minutes_in_slot': remaining_minutes,
-        'remaining_hours_in_slot': round(remaining_minutes / 60, 2),
-        'total_available_tasks': len(available_now),
-        'quick_wins': quick_wins,
-        'goal_tasks': goal_tasks,
-        'mind_tasks': mind_tasks,
-        'body_tasks': body_tasks,
-        'message': f"You have {remaining_minutes} minutes remaining in your {time_slot} slot"
+        'message': f"You have {remaining_minutes_today} minutes remaining today. {total_task_minutes} minutes scheduled ({utilization_percentage:.0f}% utilization).",
+        'remaining_hours_in_slot_week': round(remaining_hours_week, 2),
+        'remaining_minutes_today': remaining_minutes_today,
+        'remaining_hours_today': round(remaining_minutes_today / 60, 2),
+        'total_body_tasks': len(scheduled_body_tasks),
+        'total_goal_tasks': len(scheduled_goal_tasks),
+        'total_mind_tasks': len(scheduled_mind_tasks),
+        'total_time_used_for_tasks': int(total_task_minutes),
+        'remaining_minutes_in_slot_week': int(remaining_minutes_week),
+        'remaining_after_scheduling': max(0, remaining_after_scheduling),
+        'utilization_percentage': round(utilization_percentage, 1),
+        'total_available_tasks': len(all_goal_tasks) + len(all_mind_tasks) + len(all_body_tasks),
+        'total_scheduled_tasks': len(scheduled_goal_tasks) + len(scheduled_mind_tasks) + len(scheduled_body_tasks),
+        'user_id': user_id,
+        'is_working_day': is_work_day,
+        'available_hours_today': round(available_hours_today, 2),
+        'work_hours_today': round(work_hours, 2),
+        'time_dead': time_dead
     }
