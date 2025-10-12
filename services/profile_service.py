@@ -36,7 +36,7 @@ def create_profile(data):
         # Check if it's a duplicate key error (code 23505)
         error_str = str(e)
         if '23505' in error_str or 'duplicate key' in error_str.lower():
-            raise ValueError('Profile already exists for this user')
+            raise ValueError('Profile already exists for this user') from e
         raise
 
 

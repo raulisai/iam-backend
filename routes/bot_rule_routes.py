@@ -42,15 +42,9 @@ def get_rules():
               id:
                 type: string
                 format: uuid
-              rule_key:
-                type: string
-                example: "auto_meditation_morning"
               name:
                 type: string
                 example: "Auto-schedule morning meditation"
-              descr:
-                type: string
-                example: "Automatically create meditation task every morning"
               condition:
                 type: object
                 example: {"time": "08:00", "days": ["mon", "tue", "wed"]}
@@ -59,9 +53,17 @@ def get_rules():
                 type: object
                 example: {"type": "create_task", "template_id": "xyz"}
                 description: JSON action to perform when triggered
-              is_active:
+              priority:
+                type: integer
+                example: 10
+                description: Rule priority (higher = more important)
+              active:
                 type: boolean
                 example: true
+              last_evaluated:
+                type: string
+                format: date-time
+                nullable: true
               created_at:
                 type: string
                 format: date-time
@@ -103,27 +105,25 @@ def get_rule_by_id(rule_id):
             id:
               type: string
               format: uuid
-            rule_key:
-              type: string
-              example: "auto_meditation_morning"
             name:
               type: string
               example: "Auto-schedule morning meditation"
-            descr:
-              type: string
-              example: "Automatically create meditation task every morning"
             condition:
               type: object
               example: {"time": "08:00", "days": ["mon", "tue", "wed"]}
             action:
               type: object
               example: {"type": "create_task", "template_id": "xyz"}
-            is_active:
+            priority:
+              type: integer
+              example: 10
+            active:
               type: boolean
-            created_at:
+            last_evaluated:
               type: string
               format: date-time
-            updated_at:
+              nullable: true
+            created_at:
               type: string
               format: date-time
       401:
@@ -160,23 +160,14 @@ def create_bot_rule():
         schema:
           type: object
           required:
-            - rule_key
             - name
             - condition
             - action
           properties:
-            rule_key:
-              type: string
-              example: "auto_meditation_morning"
-              description: Unique identifier for this rule
             name:
               type: string
               example: "Auto-schedule morning meditation"
               description: Human-readable rule name
-            descr:
-              type: string
-              example: "Automatically create meditation task every morning at 8 AM"
-              description: Rule description
             condition:
               type: object
               example: {"time": "08:00", "days": ["mon", "tue", "wed", "thu", "fri"]}
@@ -185,7 +176,12 @@ def create_bot_rule():
               type: object
               example: {"type": "create_task", "template_id": "550e8400-e29b-41d4-a716-446655440000", "category": "mind"}
               description: JSON action to perform when triggered
-            is_active:
+            priority:
+              type: integer
+              example: 10
+              default: 5
+              description: Rule priority (higher = more important)
+            active:
               type: boolean
               example: true
               default: true
@@ -199,18 +195,20 @@ def create_bot_rule():
             id:
               type: string
               format: uuid
-            rule_key:
-              type: string
             name:
-              type: string
-            descr:
               type: string
             condition:
               type: object
             action:
               type: object
-            is_active:
+            priority:
+              type: integer
+            active:
               type: boolean
+            last_evaluated:
+              type: string
+              format: date-time
+              nullable: true
             created_at:
               type: string
               format: date-time
@@ -258,15 +256,16 @@ def update_bot_rule(rule_id):
             name:
               type: string
               example: "Auto-schedule evening meditation"
-            descr:
-              type: string
             condition:
               type: object
               example: {"time": "20:00", "days": ["all"]}
             action:
               type: object
               example: {"type": "create_task", "template_id": "xyz"}
-            is_active:
+            priority:
+              type: integer
+              example: 15
+            active:
               type: boolean
               example: false
     responses:
@@ -278,22 +277,21 @@ def update_bot_rule(rule_id):
             id:
               type: string
               format: uuid
-            rule_key:
-              type: string
             name:
-              type: string
-            descr:
               type: string
             condition:
               type: object
             action:
               type: object
-            is_active:
+            priority:
+              type: integer
+            active:
               type: boolean
-            created_at:
+            last_evaluated:
               type: string
               format: date-time
-            updated_at:
+              nullable: true
+            created_at:
               type: string
               format: date-time
       400:

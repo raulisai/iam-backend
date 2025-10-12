@@ -10,7 +10,6 @@ This service implements a sophisticated algorithm to maximize user productivity 
 from lib.db import get_supabase
 from datetime import datetime, timedelta, time as dt_time
 from typing import Dict, List, Any, Tuple, Optional
-import json
 import pytz
 
 
@@ -794,7 +793,7 @@ def get_tasks_for_current_moment(user_id: str) -> Dict[str, Any]:
         # Get current time in user's timezone
         current_time_utc = datetime.utcnow().replace(tzinfo=pytz.UTC)
         current_time = current_time_utc.astimezone(tz)
-    except:
+    except (pytz.exceptions.UnknownTimeZoneError, ValueError, AttributeError):
         # Fallback if pytz not available or timezone invalid
         current_time = datetime.utcnow()
     
