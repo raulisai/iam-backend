@@ -824,15 +824,37 @@ def get_tasks_for_current_moment(user_id: str) -> Dict[str, Any]:
     remaining_minutes_week = remaining_hours_week * 60
     
     # Calculate remaining time TODAY from current time
-    # Productive day ends at midnight (00:00 of next day)
-    if current_time.hour >= 0 and current_time.hour < 6:
-        # If it's between midnight and 6 AM, consider day is over
-        remaining_minutes_today = 0
+    # The day goes from midnight to midnight (full 24 hours)
+    # Calculate time until next midnight
+    end_of_day = (current_time + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    time_diff = end_of_day - current_time
+    total_minutes_until_midnight = int(time_diff.total_seconds() / 60)
+    
+    # However, we need to subtract work hours and time_dead to get actual available time
+    # If it's a working day, calculate when work ends
+    if is_work_day and work_hours > 0:
+        work_start_time = current_time.replace(hour=work_start_h, minute=work_start_m, second=0, microsecond=0)
+        work_end_time = current_time.replace(hour=work_end_h, minute=work_end_m, second=0, microsecond=0)
+        
+        # If current time is before work starts, we have morning time
+        if current_time < work_start_time:
+            # Time from now until work starts
+            morning_available = int((work_start_time - current_time).total_seconds() / 60)
+            # Time after work ends until midnight
+            evening_available = int((end_of_day - work_end_time).total_seconds() / 60)
+            remaining_minutes_today = morning_available + evening_available
+        # If during work hours, only evening is available
+        elif current_time < work_end_time:
+            remaining_minutes_today = int((end_of_day - work_end_time).total_seconds() / 60)
+        # If after work, time until midnight minus time_dead
+        else:
+            remaining_minutes_today = total_minutes_until_midnight
     else:
-        # Calculate time until midnight
-        end_of_day = (current_time + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-        time_diff = end_of_day - current_time
-        remaining_minutes_today = int(time_diff.total_seconds() / 60)
+        # Non-working day: all time until midnight is available
+        remaining_minutes_today = total_minutes_until_midnight
+    
+    # Make sure it doesn't go negative
+    remaining_minutes_today = max(0, remaining_minutes_today)
     
     # Get all pending tasks
     tasks_by_type = get_pending_tasks_all_types(user_id, current_time.date().isoformat(), include_unscheduled=True)
@@ -868,7 +890,7 @@ def get_tasks_for_current_moment(user_id: str) -> Dict[str, Any]:
     else:
         current_time_slot = 'evening'
     
-    # AGGRESSIVE SCHEDULING: Fill as much time as possible
+    # AGGRESSIVE SCHEDULING: Fill as much time as possible with balanced distribution
     scheduled_goal_tasks = []
     scheduled_mind_tasks = []
     scheduled_body_tasks = []
@@ -876,113 +898,187 @@ def get_tasks_for_current_moment(user_id: str) -> Dict[str, Any]:
     schedule_start_time = current_time
     available_time_buffer = remaining_minutes_today
     
-    # Priority 1: Schedule ALL GOAL tasks that fit (most important)
-    # Goals are the priority - schedule as many as possible
-    for task in all_goal_tasks:
-        duration = task.get('estimated_duration_minutes', 60)
-        duration_with_buffer = duration + 10  # Reduced buffer to 10 min
-        
-        # Check if task fits in remaining time
-        if duration_with_buffer <= available_time_buffer:
-            start_time = schedule_start_time
-            end_time = start_time + timedelta(minutes=duration)
-            
-            scheduled_goal_tasks.append({
-                **task,
-                'start_time': start_time.isoformat(),
-                'end_time': end_time.isoformat(),
-                'time_slot': current_time_slot
-            })
-            
-            schedule_start_time = end_time + timedelta(minutes=10)
-            available_time_buffer -= duration_with_buffer
-        # If task doesn't fit with buffer, try without buffer
-        elif duration <= available_time_buffer:
-            start_time = schedule_start_time
-            end_time = start_time + timedelta(minutes=duration)
-            
-            scheduled_goal_tasks.append({
-                **task,
-                'start_time': start_time.isoformat(),
-                'end_time': end_time.isoformat(),
-                'time_slot': current_time_slot
-            })
-            
-            schedule_start_time = end_time
-            available_time_buffer -= duration
+    # Calculate target time allocations (ideal distribution)
+    # Goal: 60%, Mind: 20%, Body: 20%
+    target_goal_time = remaining_minutes_today * 0.60
+    target_mind_time = remaining_minutes_today * 0.20
+    target_body_time = remaining_minutes_today * 0.20
     
-    # Priority 2: Fill remaining time with MIND tasks (maximize use)
-    # Increase limit and be more aggressive
-    for i, task in enumerate(all_mind_tasks):
-        if available_time_buffer < 15:  # Stop only if less than 15 min left
-            break
-            
-        duration = task.get('estimated_duration_minutes', 30)
-        duration_with_buffer = duration + 10
-        
-        if duration_with_buffer <= available_time_buffer:
-            start_time = schedule_start_time
-            end_time = start_time + timedelta(minutes=duration)
-            
-            scheduled_mind_tasks.append({
-                **task,
-                'start_time': start_time.isoformat(),
-                'end_time': end_time.isoformat(),
-                'time_slot': current_time_slot
-            })
-            
-            schedule_start_time = end_time + timedelta(minutes=10)
-            available_time_buffer -= duration_with_buffer
-        elif duration <= available_time_buffer:
-            # Try without buffer
-            start_time = schedule_start_time
-            end_time = start_time + timedelta(minutes=duration)
-            
-            scheduled_mind_tasks.append({
-                **task,
-                'start_time': start_time.isoformat(),
-                'end_time': end_time.isoformat(),
-                'time_slot': current_time_slot
-            })
-            
-            schedule_start_time = end_time
-            available_time_buffer -= duration
+    time_used_goals = 0
+    time_used_mind = 0
+    time_used_body = 0
     
-    # Priority 3: Fill remaining time with BODY tasks
-    for i, task in enumerate(all_body_tasks):
-        if available_time_buffer < 15:  # Stop only if less than 15 min left
+    # Create a combined priority queue with all tasks
+    # But maintain minimum quotas for each type
+    min_mind_tasks = max(1, len(all_mind_tasks) // 3) if all_mind_tasks else 0
+    min_body_tasks = max(1, len(all_body_tasks) // 3) if all_body_tasks else 0
+    
+    goal_idx = 0
+    mind_idx = 0
+    body_idx = 0
+    
+    # Schedule tasks in rounds to ensure balance
+    # Each round tries to add one task of each type if there's time
+    max_rounds = max(len(all_goal_tasks), len(all_mind_tasks), len(all_body_tasks)) + 10
+    
+    for round_num in range(max_rounds):
+        if available_time_buffer < 15:  # Stop if less than 15 min left
             break
-            
-        duration = task.get('estimated_duration_minutes', 30)
-        duration_with_buffer = duration + 10
         
-        if duration_with_buffer <= available_time_buffer:
-            start_time = schedule_start_time
-            end_time = start_time + timedelta(minutes=duration)
+        tasks_scheduled_this_round = False
+        
+        # Try to schedule a GOAL task (priority, but respect limits)
+        if goal_idx < len(all_goal_tasks) and time_used_goals < target_goal_time:
+            task = all_goal_tasks[goal_idx]
+            duration = task.get('estimated_duration_minutes', 60)
+            duration_with_buffer = duration + 10
             
-            scheduled_body_tasks.append({
-                **task,
-                'start_time': start_time.isoformat(),
-                'end_time': end_time.isoformat(),
-                'time_slot': current_time_slot
-            })
+            if duration_with_buffer <= available_time_buffer:
+                start_time = schedule_start_time
+                end_time = start_time + timedelta(minutes=duration)
+                
+                scheduled_goal_tasks.append({
+                    **task,
+                    'start_time': start_time.isoformat(),
+                    'end_time': end_time.isoformat(),
+                    'time_slot': current_time_slot
+                })
+                
+                schedule_start_time = end_time + timedelta(minutes=10)
+                available_time_buffer -= duration_with_buffer
+                time_used_goals += duration
+                goal_idx += 1
+                tasks_scheduled_this_round = True
+            elif duration <= available_time_buffer:
+                # Try without buffer
+                start_time = schedule_start_time
+                end_time = start_time + timedelta(minutes=duration)
+                
+                scheduled_goal_tasks.append({
+                    **task,
+                    'start_time': start_time.isoformat(),
+                    'end_time': end_time.isoformat(),
+                    'time_slot': current_time_slot
+                })
+                
+                schedule_start_time = end_time
+                available_time_buffer -= duration
+                time_used_goals += duration
+                goal_idx += 1
+                tasks_scheduled_this_round = True
+            else:
+                goal_idx += 1  # Skip task if too long
+        
+        # Try to schedule a MIND task (ensure minimum representation)
+        if mind_idx < len(all_mind_tasks) and (time_used_mind < target_mind_time or len(scheduled_mind_tasks) < min_mind_tasks):
+            task = all_mind_tasks[mind_idx]
+            duration = task.get('estimated_duration_minutes', 30)
+            duration_with_buffer = duration + 10
             
-            schedule_start_time = end_time + timedelta(minutes=10)
-            available_time_buffer -= duration_with_buffer
-        elif duration <= available_time_buffer:
-            # Try without buffer
-            start_time = schedule_start_time
-            end_time = start_time + timedelta(minutes=duration)
+            if duration_with_buffer <= available_time_buffer:
+                start_time = schedule_start_time
+                end_time = start_time + timedelta(minutes=duration)
+                
+                scheduled_mind_tasks.append({
+                    **task,
+                    'start_time': start_time.isoformat(),
+                    'end_time': end_time.isoformat(),
+                    'time_slot': current_time_slot
+                })
+                
+                schedule_start_time = end_time + timedelta(minutes=10)
+                available_time_buffer -= duration_with_buffer
+                time_used_mind += duration
+                mind_idx += 1
+                tasks_scheduled_this_round = True
+            elif duration <= available_time_buffer:
+                start_time = schedule_start_time
+                end_time = start_time + timedelta(minutes=duration)
+                
+                scheduled_mind_tasks.append({
+                    **task,
+                    'start_time': start_time.isoformat(),
+                    'end_time': end_time.isoformat(),
+                    'time_slot': current_time_slot
+                })
+                
+                schedule_start_time = end_time
+                available_time_buffer -= duration
+                time_used_mind += duration
+                mind_idx += 1
+                tasks_scheduled_this_round = True
+            else:
+                mind_idx += 1  # Skip task if too long
+        
+        # Try to schedule a BODY task (ensure minimum representation)
+        if body_idx < len(all_body_tasks) and (time_used_body < target_body_time or len(scheduled_body_tasks) < min_body_tasks):
+            task = all_body_tasks[body_idx]
+            duration = task.get('estimated_duration_minutes', 30)
+            duration_with_buffer = duration + 10
             
-            scheduled_body_tasks.append({
-                **task,
-                'start_time': start_time.isoformat(),
-                'end_time': end_time.isoformat(),
-                'time_slot': current_time_slot
-            })
+            if duration_with_buffer <= available_time_buffer:
+                start_time = schedule_start_time
+                end_time = start_time + timedelta(minutes=duration)
+                
+                scheduled_body_tasks.append({
+                    **task,
+                    'start_time': start_time.isoformat(),
+                    'end_time': end_time.isoformat(),
+                    'time_slot': current_time_slot
+                })
+                
+                schedule_start_time = end_time + timedelta(minutes=10)
+                available_time_buffer -= duration_with_buffer
+                time_used_body += duration
+                body_idx += 1
+                tasks_scheduled_this_round = True
+            elif duration <= available_time_buffer:
+                start_time = schedule_start_time
+                end_time = start_time + timedelta(minutes=duration)
+                
+                scheduled_body_tasks.append({
+                    **task,
+                    'start_time': start_time.isoformat(),
+                    'end_time': end_time.isoformat(),
+                    'time_slot': current_time_slot
+                })
+                
+                schedule_start_time = end_time
+                available_time_buffer -= duration
+                time_used_body += duration
+                body_idx += 1
+                tasks_scheduled_this_round = True
+            else:
+                body_idx += 1  # Skip task if too long
+        
+        # If no tasks were scheduled this round and we've exhausted all lists, break
+        if not tasks_scheduled_this_round:
+            if goal_idx >= len(all_goal_tasks) and mind_idx >= len(all_mind_tasks) and body_idx >= len(all_body_tasks):
+                break
+    
+    # After balanced scheduling, if there's still significant time left,
+    # fill with any remaining tasks (prioritize goals)
+    if available_time_buffer > 60:  # More than 1 hour left
+        # Add remaining goal tasks
+        while goal_idx < len(all_goal_tasks) and available_time_buffer >= 15:
+            task = all_goal_tasks[goal_idx]
+            duration = task.get('estimated_duration_minutes', 60)
             
-            schedule_start_time = end_time
-            available_time_buffer -= duration
+            if duration + 10 <= available_time_buffer:
+                start_time = schedule_start_time
+                end_time = start_time + timedelta(minutes=duration)
+                
+                scheduled_goal_tasks.append({
+                    **task,
+                    'start_time': start_time.isoformat(),
+                    'end_time': end_time.isoformat(),
+                    'time_slot': current_time_slot
+                })
+                
+                schedule_start_time = end_time + timedelta(minutes=10)
+                available_time_buffer -= (duration + 10)
+            
+            goal_idx += 1
     
     # Calculate total time for scheduled tasks
     total_task_minutes = sum(t.get('estimated_duration_minutes', 60) for t in scheduled_goal_tasks)
