@@ -326,19 +326,28 @@ def optimize_day():
 @time_optimizer_routes.route('/tasks-now', methods=['GET', 'OPTIONS'])
 @token_required
 def tasks_now():
-    """Get tasks recommended for RIGHT NOW.
+    """Get tasks recommended for RIGHT NOW with aggressive scheduling.
     ---
     tags:
       - Time Optimizer
-    summary: Get tasks for current moment
+    summary: Get optimized tasks for remaining time today
     description: |
-      Returns tasks that should be done immediately based on:
-      - Current time of day
-      - Remaining time in current productive slot
-      - Task urgency and priority
-      - Task duration (can it fit in remaining time?)
+      Returns intelligently scheduled tasks for the rest of today based on:
+      - User's timezone (e.g., America/Mexico_City)
+      - Work days configuration (day_work field)
+      - Time dead (sleep, personal care hours)
+      - Current time until midnight
+      - Available time calculation: (24 - work_hours - time_dead)
       
-      Perfect for "What should I do right now?" scenarios.
+      **Aggressive Scheduling Algorithm:**
+      - Priority 1: GOAL tasks (all that fit - most important)
+      - Priority 2: MIND tasks (fill remaining time - development)
+      - Priority 3: BODY tasks (use any final gaps - wellness)
+      - Aims for 85-95% time utilization
+      - 10-minute buffers between tasks
+      - No artificial limits on task counts
+      
+      Perfect for "What should I do for the rest of today?" scenarios.
     parameters:
       - in: header
         name: Authorization
@@ -347,54 +356,230 @@ def tasks_now():
         type: string
     responses:
       200:
-        description: Current moment task recommendations
+        description: Scheduled tasks for remaining time today
         schema:
           type: object
           properties:
-            user_id:
-              type: string
-              format: uuid
-            current_time:
-              type: string
-              format: date-time
-            time_slot:
-              type: string
-              enum: ["morning", "evening", "work_hours"]
-            remaining_minutes_in_slot:
-              type: integer
-              description: Minutes left in current productive slot
-            remaining_hours_in_slot:
-              type: number
-              description: Hours left in current productive slot
-            recommended_tasks:
+            body_tasks:
               type: array
-              description: Top 3-5 tasks recommended for now
+              description: Scheduled body/wellness tasks
               items:
                 type: object
                 properties:
                   id:
                     type: string
+                    format: uuid
+                  task_id:
+                    type: string
+                    format: uuid
                   title:
+                    type: string
+                    example: "Yoga Matutino"
+                  description:
                     type: string
                   type:
                     type: string
+                    enum: ["body"]
                   estimated_duration_minutes:
                     type: integer
+                    example: 30
+                  priority_score:
+                    type: number
+                    example: 20
+                  urgency_multiplier:
+                    type: number
+                    example: 1
+                  scheduled_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  status:
+                    type: string
+                    example: "pending"
                   start_time:
                     type: string
                     format: date-time
-                  priority_score:
-                    type: number
-            total_available_tasks:
-              type: integer
-            quick_wins:
+                    example: "2025-10-12T20:30:00-06:00"
+                  end_time:
+                    type: string
+                    format: date-time
+                    example: "2025-10-12T21:00:00-06:00"
+                  time_slot:
+                    type: string
+                    enum: ["morning", "afternoon", "evening"]
+            goal_tasks:
               type: array
-              description: Tasks that take 30 minutes or less
+              description: Scheduled goal tasks (highest priority)
               items:
                 type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  task_id:
+                    type: string
+                    format: uuid
+                  title:
+                    type: string
+                    example: "Planificación del proyecto IAM"
+                  description:
+                    type: string
+                  type:
+                    type: string
+                    enum: ["goal"]
+                  goal_title:
+                    type: string
+                    example: "Finish web IAM"
+                  goal_deadline:
+                    type: string
+                    format: date
+                    example: "2025-10-29"
+                  days_until_deadline:
+                    type: integer
+                    example: 17
+                  urgency_multiplier:
+                    type: number
+                    example: 1
+                  weight:
+                    type: integer
+                    example: 100000
+                  estimated_duration_minutes:
+                    type: integer
+                    example: 60
+                  priority_score:
+                    type: number
+                    example: 3000002
+                  scheduled_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  status:
+                    type: string
+                    example: "pending"
+                  start_time:
+                    type: string
+                    format: date-time
+                  end_time:
+                    type: string
+                    format: date-time
+                  time_slot:
+                    type: string
+            mind_tasks:
+              type: array
+              description: Scheduled mind/development tasks
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  task_id:
+                    type: string
+                    format: uuid
+                  title:
+                    type: string
+                    example: "Networking Profesional"
+                  description:
+                    type: string
+                  type:
+                    type: string
+                    enum: ["mind"]
+                  estimated_duration_minutes:
+                    type: integer
+                    example: 30
+                  priority_score:
+                    type: number
+                  urgency_multiplier:
+                    type: number
+                  scheduled_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  status:
+                    type: string
+                  start_time:
+                    type: string
+                    format: date-time
+                  end_time:
+                    type: string
+                    format: date-time
+                  time_slot:
+                    type: string
+            current_time:
+              type: string
+              format: date-time
+              description: Current time in user's timezone
+              example: "2025-10-12T21:00:00-06:00"
             message:
               type: string
-              example: "You have 180 minutes remaining in your evening slot"
+              example: "You have 180 minutes remaining today. 170 minutes scheduled (94% utilization)."
+            remaining_hours_in_slot_week:
+              type: number
+              description: Remaining hours available this week
+              example: 27.5
+            remaining_minutes_today:
+              type: integer
+              description: Minutes from now until midnight
+              example: 180
+            remaining_hours_today:
+              type: number
+              description: Hours from now until midnight (decimal)
+              example: 3.0
+            total_body_tasks:
+              type: integer
+              description: Number of body tasks scheduled
+              example: 2
+            total_goal_tasks:
+              type: integer
+              description: Number of goal tasks scheduled
+              example: 3
+            total_mind_tasks:
+              type: integer
+              description: Number of mind tasks scheduled
+              example: 1
+            total_time_used_for_tasks:
+              type: integer
+              description: Total minutes of scheduled tasks
+              example: 170
+            remaining_minutes_in_slot_week:
+              type: integer
+              description: Minutes available this week
+              example: 1650
+            remaining_after_scheduling:
+              type: integer
+              description: Free time after all scheduled tasks
+              example: 10
+            utilization_percentage:
+              type: number
+              description: Percentage of available time being used (85-95% target)
+              example: 94.4
+            total_available_tasks:
+              type: integer
+              description: Total tasks available in database
+              example: 17
+            total_scheduled_tasks:
+              type: integer
+              description: Total tasks that fit in remaining time
+              example: 6
+            user_id:
+              type: string
+              format: uuid
+            is_working_day:
+              type: boolean
+              description: Whether today is a working day (based on day_work field)
+              example: false
+            available_hours_today:
+              type: number
+              description: Total hours available today (24 - work_hours - time_dead)
+              example: 15
+            work_hours_today:
+              type: number
+              description: Work hours today (0 if not working day)
+              example: 0
+            time_dead:
+              type: number
+              description: Time dead from profile (sleep, etc.)
+              example: 9
       401:
         description: Unauthorized
         schema:
