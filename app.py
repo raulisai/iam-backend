@@ -106,9 +106,18 @@ swagger = Swagger(app, template=swagger_template)
 def handle_preflight():
     if request.method == 'OPTIONS':
         response = jsonify({'status': 'ok'})
-        response.headers['Access-Control-Allow-Origin'] = 'http://localhost:5173'
+        # Allow multiple origins (localhost for dev, production URL from env)
+        allowed_origins = [
+            'http://localhost:5173',
+            'http://localhost:3000',
+            'https://s8s23kr8-5173.usw3.devtunnels.ms',
+            os.environ.get('FRONTEND_URL', '')
+        ]
+        origin = request.headers.get('Origin')
+        if origin in allowed_origins:
+            response.headers['Access-Control-Allow-Origin'] = origin
         response.headers['Access-Control-Allow-Credentials'] = 'true'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control, X-Accel-Buffering, Connection'
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
         return response, 200
 
@@ -119,13 +128,14 @@ def after_request(response):
     allowed_origins = [
         'http://localhost:5173',
         'http://localhost:3000',
+        'https://s8s23kr8-5173.usw3.devtunnels.ms',
         os.environ.get('FRONTEND_URL', '')
     ]
     origin = request.headers.get('Origin')
     if origin in allowed_origins:
         response.headers['Access-Control-Allow-Origin'] = origin
     response.headers['Access-Control-Allow-Credentials'] = 'true'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control, X-Accel-Buffering, Connection'
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
     return response
 

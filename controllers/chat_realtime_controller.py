@@ -2,6 +2,7 @@
 from flask import jsonify, request, Response, stream_with_context
 import logging
 import json
+import os
 from services.chat_ia_service import (
     get_chat_session_by_id,
     create_chat_session,
@@ -160,7 +161,7 @@ def chat_stream(session_id):
         return jsonify({'error': 'Failed to create message'}), 500
     
     # Return streaming response
-    return Response(
+    response = Response(
         stream_with_context(stream_chat_response(session_id, content, user_id)),
         mimetype='text/event-stream',
         headers={
@@ -169,6 +170,22 @@ def chat_stream(session_id):
             'Connection': 'keep-alive'
         }
     )
+    
+    # Add CORS headers for SSE
+    origin = request.headers.get('Origin')
+    allowed_origins = [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'https://s8s23kr8-5173.usw3.devtunnels.ms',
+        os.environ.get('FRONTEND_URL', '')
+    ]
+    if origin and origin in allowed_origins:
+        response.headers['Access-Control-Allow-Origin'] = origin
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control, X-Accel-Buffering, Connection'
+    response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+    
+    return response
 
 
 def create_chat_stream_session(data):
