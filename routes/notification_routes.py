@@ -6,7 +6,8 @@ from controllers.notification_controller import (
     remove_device_token,
     send_push_notification,
     send_bulk_notification,
-    list_device_tokens
+    list_device_tokens,
+    send_alarm
 )
 from middleware.auth_middleware import token_required
 
@@ -22,9 +23,12 @@ def register_token(current_user):
     ---
     tags:
       - Notifications
-    security:
-      - Bearer: []
     parameters:
+      - in: header
+        name: Authorization
+        description: JWT token (Bearer <token>)
+        required: true
+        type: string
       - in: body
         name: body
         description: Device token registration data
@@ -136,9 +140,12 @@ def remove_token(current_user):
     ---
     tags:
       - Notifications
-    security:
-      - Bearer: []
     parameters:
+      - in: header
+        name: Authorization
+        description: JWT token (Bearer <token>)
+        required: true
+        type: string
       - in: body
         name: body
         description: Token removal data
@@ -184,9 +191,12 @@ def send_notification(current_user):
     ---
     tags:
       - Notifications
-    security:
-      - Bearer: []
     parameters:
+      - in: header
+        name: Authorization
+        description: JWT token (Bearer <token>)
+        required: true
+        type: string
       - in: body
         name: body
         description: Notification data
@@ -256,9 +266,12 @@ def send_bulk(current_user):
     ---
     tags:
       - Notifications
-    security:
-      - Bearer: []
     parameters:
+      - in: header
+        name: Authorization
+        description: JWT token (Bearer <token>)
+        required: true
+        type: string
       - in: body
         name: body
         description: Bulk notification data
@@ -316,9 +329,12 @@ def list_all_tokens(current_user):
     ---
     tags:
       - Notifications
-    security:
-      - Bearer: []
     parameters:
+      - in: header
+        name: Authorization
+        description: JWT token (Bearer <token>)
+        required: true
+        type: string
       - in: query
         name: user_id
         type: string

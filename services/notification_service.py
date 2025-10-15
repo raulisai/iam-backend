@@ -175,6 +175,51 @@ def send_notification_to_multiple_users(user_ids, title, body, data=None):
     }
 
 
+def send_alarm_to_device(device_token, mensaje, additional_data=None):
+    """Send an alarm notification directly to a specific device token.
+    
+    Args:
+        device_token (str): FCM device token.
+        mensaje (str): Alarm message.
+        additional_data (dict, optional): Additional data payload.
+    
+    Returns:
+        dict: Result with success/failure information.
+    """
+    try:
+        # Prepare data payload with alarm type and message
+        data_payload = {
+            "tipo": "alarma",
+            "mensaje": mensaje
+        }
+        
+        # Merge with any additional data
+        if additional_data:
+            data_payload.update(additional_data)
+        
+        # Send notification with data-only payload (no notification title/body)
+        # This allows the app to handle the alarm in the background
+        msg_id = send_message_to_token(
+            token=device_token,
+            title="",  # Empty title for data-only message
+            body="",   # Empty body for data-only message
+            data=data_payload
+        )
+        
+        return {
+            "status": "sent",
+            "message_id": msg_id,
+            "token": device_token
+        }
+    except Exception as e:
+        error_msg = str(e)
+        return {
+            "status": "error",
+            "error": error_msg,
+            "token": device_token
+        }
+
+
 def get_all_device_tokens(user_id=None, platform=None, is_active=None):
     """Get device tokens with optional filters.
     

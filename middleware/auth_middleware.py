@@ -2,6 +2,7 @@
 from functools import wraps
 from flask import request, jsonify
 from services.auth_service import verify_jwt_token
+import inspect
 
 
 def token_required(f):
@@ -15,6 +16,12 @@ def token_required(f):
         def protected_route():
             # Access user info via request.user
             user_id = request.user['user_id']
+            return jsonify({'message': 'Protected data'})
+        
+        # Or with current_user parameter:
+        @token_required
+        def protected_route(current_user):
+            user_id = current_user['user_id']
             return jsonify({'message': 'Protected data'})
     
     Args:
@@ -48,7 +55,11 @@ def token_required(f):
         # Add user information to request context
         request.user = payload
         
-        # Pass current_user as first argument to the wrapped function
-        return f(payload, *args, **kwargs)
+        # Check if the function expects 'current_user' parameter
+        sig = inspect.signature(f)
+        if 'current_user' in sig.parameters:
+            return f(*args, current_user=payload, **kwargs)
+        else:
+            return f(*args, **kwargs)
     
     return decorated

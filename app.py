@@ -167,6 +167,7 @@ app.register_blueprint(chat_realtime_routes)
 app.register_blueprint(stats_routes)
 app.register_blueprint(task_recommendation_routes)
 app.register_blueprint(time_optimizer_routes)
+app.register_blueprint(notification_routes)
 
 if __name__ == '__main__':
     # Get port from environment variable (Render assigns this)

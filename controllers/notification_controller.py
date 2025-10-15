@@ -7,7 +7,8 @@ from services.notification_service import (
     delete_device_token,
     send_notification_to_user,
     send_notification_to_multiple_users,
-    get_all_device_tokens
+    get_all_device_tokens,
+    send_alarm_to_device
 )
 
 
@@ -179,6 +180,45 @@ def send_bulk_notification(user_ids, title, body, data=None):
     except Exception as e:
         return jsonify({
             'error': f'Error sending bulk notification: {str(e)}'
+        }), 500
+
+
+def send_alarm(device_token, mensaje, additional_data=None):
+    """Send an alarm notification directly to a device token.
+    
+    Args:
+        device_token (str): FCM device token.
+        mensaje (str): Alarm message.
+        additional_data (dict, optional): Additional data payload.
+    
+    Returns:
+        tuple: JSON response and status code.
+    """
+    if not device_token:
+        return jsonify({'error': 'Device token (to) is required'}), 400
+    
+    if not mensaje:
+        return jsonify({'error': 'Mensaje is required'}), 400
+    
+    try:
+        result = send_alarm_to_device(device_token, mensaje, additional_data)
+        
+        if result['status'] == 'error':
+            return jsonify({
+                'status': 'error',
+                'message': 'Failed to send alarm',
+                'error': result['error']
+            }), 500
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Alarm sent successfully',
+            'data': result
+        }), 200
+    
+    except Exception as e:
+        return jsonify({
+            'error': f'Error sending alarm: {str(e)}'
         }), 500
 
 
