@@ -48,6 +48,7 @@ def token_required(f):
         # Add user information to request context
         request.user = payload
         
-        return f(*args, **kwargs)
+        # Pass current_user as first argument to the wrapped function
+        return f(payload, *args, **kwargs)
     
     return decorated

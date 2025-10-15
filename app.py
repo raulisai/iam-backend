@@ -23,6 +23,7 @@ from routes.chat_realtime_routes import chat_realtime_routes
 from routes.stats_routes import stats_routes
 from routes.task_recommendation_routes import task_recommendation_routes
 from routes.time_optimizer_routes import time_optimizer_routes
+from routes.notification_routes import notification_routes
 import os
 
 app = Flask(__name__)
@@ -40,6 +41,14 @@ swagger_template = {
     },
     "schemes": ["http", "https"],
     "basePath": "/",
+    "securityDefinitions": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\""
+        }
+    },
     "definitions": {
         "ErrorResponse": {
             "type": "object",
