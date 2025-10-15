@@ -8,7 +8,7 @@ from services.notification_service import (
     send_notification_to_user,
     send_notification_to_multiple_users,
     get_all_device_tokens,
-    send_alarm_to_device
+    send_alarm_to_user
 )
 
 
@@ -183,36 +183,37 @@ def send_bulk_notification(user_ids, title, body, data=None):
         }), 500
 
 
-def send_alarm(device_token, mensaje, additional_data=None):
-    """Send an alarm notification directly to a device token.
+def send_alarm(user_id, mensaje, title=None, body=None, additional_data=None):
+    """Send an alarm data-only message to a user's devices.
     
     Args:
-        device_token (str): FCM device token.
+        user_id (str): User ID.
         mensaje (str): Alarm message.
+        title (str, optional): Title for notification display in app.
+        body (str, optional): Body for notification display in app.
         additional_data (dict, optional): Additional data payload.
     
     Returns:
         tuple: JSON response and status code.
     """
-    if not device_token:
-        return jsonify({'error': 'Device token (to) is required'}), 400
+    if not user_id:
+        return jsonify({'error': 'User ID is required'}), 400
     
     if not mensaje:
         return jsonify({'error': 'Mensaje is required'}), 400
     
     try:
-        result = send_alarm_to_device(device_token, mensaje, additional_data)
+        result = send_alarm_to_user(user_id, mensaje, title, body, additional_data)
         
-        if result['status'] == 'error':
+        if result['status'] == 'no_tokens':
             return jsonify({
-                'status': 'error',
-                'message': 'Failed to send alarm',
-                'error': result['error']
-            }), 500
+                'status': 'warning',
+                'message': result['message']
+            }), 404
         
         return jsonify({
             'status': 'success',
-            'message': 'Alarm sent successfully',
+            'message': 'Alarm sent',
             'data': result
         }), 200
     

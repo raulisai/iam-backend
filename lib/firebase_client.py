@@ -4,48 +4,41 @@ import json
 from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, messaging
+import functools
 
 load_dotenv()
 
-# Initialize Firebase Admin SDK
-_firebase_app = None
+@functools.lru_cache(maxsize=1)
+def get_firebase_app():
+	"""Return initialized Firebase app (initialize if needed). Cached to avoid globals."""
+	try:
+		# If an app is already initialized, return it
+		return firebase_admin.get_app()
+	except ValueError:
+		# Not initialized yet — try to initialize from environment
+		try:
+			firebase_creds = os.getenv("FIREBASE_SERVICE_ACCOUNT")
+			if not firebase_creds:
+				print("Warning: FIREBASE_SERVICE_ACCOUNT not found in environment variables")
+				return None
 
+			if os.path.isfile(firebase_creds):
+				cred = credentials.Certificate(firebase_creds)
+			else:
+				cred_dict = json.loads(firebase_creds)
+				cred = credentials.Certificate(cred_dict)
 
-def initialize_firebase():
-    """Initialize Firebase Admin SDK with service account credentials."""
-    global _firebase_app
-    
-    if _firebase_app is not None:
-        return _firebase_app
-    
-    try:
-        # Try to get credentials from environment variable (JSON string or file path)
-        firebase_creds = os.getenv("FIREBASE_SERVICE_ACCOUNT")
-        
-        if not firebase_creds:
-            print("Warning: FIREBASE_SERVICE_ACCOUNT not found in environment variables")
-            return None
-        
-        # Check if it's a file path or JSON string
-        if os.path.isfile(firebase_creds):
-            cred = credentials.Certificate(firebase_creds)
-        else:
-            # Parse as JSON string
-            cred_dict = json.loads(firebase_creds)
-            cred = credentials.Certificate(cred_dict)
-        
-        _firebase_app = firebase_admin.initialize_app(cred)
-        print("Firebase Admin SDK initialized successfully")
-        return _firebase_app
-    
-    except Exception as e:
-        print(f"Error initializing Firebase Admin SDK: {str(e)}")
-        return None
+			app = firebase_admin.initialize_app(cred)
+			print("Firebase Admin SDK initialized successfully")
+			return app
+		except Exception as e:
+			print(f"Error initializing Firebase Admin SDK: {str(e)}")
+			return None
 
 
 class FirebaseInitializationError(RuntimeError):
-    """Raised when the Firebase Admin SDK is not initialized."""
-    pass
+	"""Raised when the Firebase Admin SDK is not initialized."""
+	pass
 
 
 def send_message_to_token(token, title, body, data=None):
@@ -63,10 +56,8 @@ def send_message_to_token(token, title, body, data=None):
     Raises:
         FirebaseInitializationError: If the Firebase Admin SDK is not initialized.
     """
-    if _firebase_app is None:
-        initialize_firebase()
-    
-    if _firebase_app is None:
+    app = get_firebase_app()
+    if app is None:
         raise FirebaseInitializationError("Firebase Admin SDK not initialized")
     
     # Build the message
@@ -102,6 +93,45 @@ def send_message_to_token(token, title, body, data=None):
         print(f"Error sending message to token {token}: {str(e)}")
         raise
 
+def send_alarma_to_token(token, data=None):
+    """
+    Envía un mensaje data-only (alarma) a un token con Firebase Admin SDK.
+    data: dict (valores convertidos a string internamente).
+    Retorna el message_id (str) devuelto por messaging.send.
+    """
+    app = get_firebase_app()
+    if app is None:
+        raise FirebaseInitializationError("Firebase Admin SDK not initialized")
+
+    # Asegurar que los valores sean strings (requisito de FCM para data)
+    safe_data = {k: str(v) for k, v in (data or {}).items()}
+
+    # Añade campo tipo si no existe
+    safe_data.setdefault("tipo", "alarma")
+
+    # Construir message solo con data (sin notification)
+    message = messaging.Message(
+        data=safe_data,
+        token=token,
+        android=messaging.AndroidConfig(
+            priority='high',
+        ),
+        apns=messaging.APNSConfig(
+            payload=messaging.APNSPayload(
+                aps=messaging.Aps(
+                    content_available=True  # para iOS background delivery
+                )
+            )
+        )
+    )
+
+    try:
+        response = messaging.send(message)
+        # response es el message_id (string)
+        return response
+    except Exception as e:
+        print(f"Error sending alarm to token {token}: {e}")
+        raise
 
 def send_multicast_message(tokens, title, body, data=None):
     """Send a push notification to multiple device tokens.
@@ -115,10 +145,8 @@ def send_multicast_message(tokens, title, body, data=None):
     Returns:
         dict: Response with success count and failed tokens.
     """
-    if _firebase_app is None:
-        initialize_firebase()
-    
-    if _firebase_app is None:
+    app = get_firebase_app()
+    if app is None:
         raise Exception("Firebase Admin SDK not initialized")
     
     if not tokens:
@@ -222,5 +250,5 @@ def send_multicast_message(tokens, title, body, data=None):
         raise
 
 
-# Initialize on module import
-initialize_firebase()
+# Initialize on module import (attempt; will be a no-op if env not set)
+get_firebase_app()

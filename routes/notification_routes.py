@@ -321,6 +321,100 @@ def send_bulk(current_user):
     return send_bulk_notification(user_ids, title, body, data)
 
 
+@notification_routes.route('/api/notification/send-alarm', methods=['POST'])
+@token_required
+def send_alarm_notification(current_user):
+    """
+    Send an alarm data-only message to the authenticated user's devices.
+    Uses data-only messages (no notification field) to ensure onMessageReceived
+    is always called, even when the app is in background or closed.
+    ---
+    tags:
+      - Notifications
+    parameters:
+      - in: header
+        name: Authorization
+        description: JWT token (Bearer <token>)
+        required: true
+        type: string
+      - in: body
+        name: body
+        description: Alarm notification data
+        required: true
+        schema:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              type: object
+              required:
+                - mensaje
+              properties:
+                mensaje:
+                  type: string
+                  description: Alarm message
+                  example: "Es hora de levantarse!"
+                title:
+                  type: string
+                  description: Title for display (optional, defaults to "Alarma")
+                  example: "Alarma"
+                body:
+                  type: string
+                  description: Body for display (optional, defaults to mensaje)
+                  example: "¡Alarma activada!"
+    responses:
+      200:
+        description: Alarm sent successfully
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: "success"
+            message:
+              type: string
+              example: "Alarm sent"
+            data:
+              type: object
+              properties:
+                status:
+                  type: string
+                  example: "completed"
+                success_count:
+                  type: integer
+                  example: 2
+                failure_count:
+                  type: integer
+                  example: 0
+                results:
+                  type: array
+                  items:
+                    type: object
+      400:
+        description: Invalid request
+      401:
+        description: Unauthorized
+      404:
+        description: No active tokens found
+      500:
+        description: Server error
+    """
+    payload = request.get_json() or {}
+    data = payload.get('data', {})
+    mensaje = data.get('mensaje')
+    title = data.get('title')
+    body = data.get('body')
+    
+    # Get user_id from JWT token (current_user is set by @token_required)
+    user_id = current_user.get('user_id')
+    
+    # Extract additional data (excluding tipo, mensaje, title, body which are handled separately)
+    additional_data = {k: v for k, v in data.items() if k not in ['tipo', 'mensaje', 'title', 'body']}
+    
+    return send_alarm(user_id, mensaje, title, body, additional_data if additional_data else None)
+
+
 @notification_routes.route('/api/notification/tokens/all', methods=['GET'])
 @token_required
 def list_all_tokens(current_user):
