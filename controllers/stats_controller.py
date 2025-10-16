@@ -273,3 +273,153 @@ def get_user_stats_summary():
         return jsonify(summary), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+def update_latest_snapshot_with_health_data(data):
+    """Update the latest snapshot with raw health data from mobile.
+    
+    Processes raw health data, filters null values, and formats numeric fields.
+    Only updates non-null fields in the most recent snapshot.
+    
+    Args:
+        data (dict): Raw health data from mobile app.
+    
+    Returns:
+        tuple: JSON response with updated snapshot and status code.
+    """
+    try:
+        user_id = request.user.get('user_id')
+        
+        # Get the latest snapshot to use previous values when needed
+        from services.stats_service import get_latest_snapshot
+        latest_snapshot = get_latest_snapshot(user_id)
+        
+        # Process and format the data
+        processed_data = {}
+        
+        # Handle snapshot_at
+        if data.get('snapshot_at'):
+            processed_data['snapshot_at'] = data['snapshot_at']
+        
+        # Handle numeric metrics with decimal formatting (2 decimals)
+        numeric_fields = ['energy', 'stamina', 'strength', 'flexibility', 'attention', 
+                         'score_body', 'score_mind']
+        for field in numeric_fields:
+            if data.get(field) is not None:
+                try:
+                    processed_data[field] = round(float(data[field]), 2)
+                except (ValueError, TypeError):
+                    pass  # Skip invalid values
+        
+        # Handle steps_daily first (needed for calorie calculation)
+        steps_value = 0
+        if data.get('steps_daily') is not None:
+            try:
+                steps_value = int(float(data['steps_daily']))
+                processed_data['steps_daily'] = str(steps_value)
+            except (ValueError, TypeError):
+                pass
+        
+        # Handle calories_burned - calculate from steps if calories = 0 or not provided
+        if data.get('calories_burned') is not None:
+            try:
+                calories_value = float(data['calories_burned'])
+                
+                # If calories is 0 or very low and we have steps, calculate it
+                if calories_value < 1 and steps_value > 0:
+                    # Formula: 1 step ≈ 0.04 calories (average person)
+                    # This varies by weight, but 0.04 is a good average
+                    calories_value = steps_value * 0.04
+                
+                processed_data['calories_burned'] = str(round(calories_value, 2))
+            except (ValueError, TypeError):
+                # If error but we have steps, calculate anyway
+                if steps_value > 0:
+                    calories_value = steps_value * 0.04
+                    processed_data['calories_burned'] = str(round(calories_value, 2))
+        elif steps_value > 0:
+            # No calories provided but have steps
+            calories_value = steps_value * 0.04
+            processed_data['calories_burned'] = str(round(calories_value, 2))
+        
+        # Handle heart_rate - use previous value if not provided or null
+        if data.get('heart_rate') is not None:
+            try:
+                heart_rate_value = float(data['heart_rate'])
+                processed_data['heart_rate'] = str(round(heart_rate_value, 2))
+            except (ValueError, TypeError):
+                # If invalid and we have a previous snapshot, use that value
+                if latest_snapshot and latest_snapshot.get('heart_rate'):
+                    processed_data['heart_rate'] = latest_snapshot['heart_rate']
+        else:
+            # No heart_rate provided, use previous value if available
+            if latest_snapshot and latest_snapshot.get('heart_rate'):
+                processed_data['heart_rate'] = latest_snapshot['heart_rate']
+        
+        # Handle sleep_score - convert milliseconds to hours
+        sleep_quality = None
+        if data.get('sleep_score') is not None:
+            try:
+                sleep_value = float(data['sleep_score'])
+                
+                # Convert from milliseconds to hours
+                # ms -> seconds -> minutes -> hours
+                if sleep_value > 1000000:  # If in milliseconds
+                    sleep_seconds = sleep_value / 1000
+                    sleep_minutes = sleep_seconds / 60
+                    sleep_hours = sleep_minutes / 60
+                else:
+                    # Assume it's already in a smaller unit
+                    sleep_hours = sleep_value
+                
+                # Store hours as string with 2 decimals
+                processed_data['sleep_score'] = str(round(sleep_hours, 2))
+                
+                # Determine sleep quality based on hours
+                # Optimal: 7-9 hours = "bueno"
+                # Acceptable: 6-7 or 9-10 hours = "estable"
+                # Poor: <6 or >10 hours = "malo"
+                if 7 <= sleep_hours <= 9:
+                    sleep_quality = "bueno"
+                elif (6 <= sleep_hours < 7) or (9 < sleep_hours <= 10):
+                    sleep_quality = "estable"
+                else:
+                    sleep_quality = "malo"
+            except (ValueError, TypeError):
+                pass
+        
+        # Handle model_version
+        if data.get('model_version'):
+            processed_data['model_version'] = data['model_version']
+        
+        # Handle inputs (keep as JSONB object)
+        # Add sleep quality to inputs if we calculated it
+        inputs_data = data.get('inputs') if data.get('inputs') is not None else {}
+        
+        # Add calculated sleep quality to inputs
+        if sleep_quality:
+            if isinstance(inputs_data, dict):
+                inputs_data['sleep_quality'] = sleep_quality
+            else:
+                inputs_data = {'sleep_quality': sleep_quality}
+        
+        # Only set inputs if we have data
+        if inputs_data:
+            processed_data['inputs'] = inputs_data
+        
+        # If no valid data to update, return error
+        if not processed_data:
+            return jsonify({'error': 'No valid data to update'}), 400
+        
+        # Import the service function
+        from services.stats_service import update_latest_snapshot
+        
+        # Update or create snapshot
+        snapshot = update_latest_snapshot(user_id, processed_data)
+        
+        if not snapshot:
+            return jsonify({'error': 'Failed to update snapshot'}), 500
+        
+        return jsonify(snapshot), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

@@ -228,3 +228,36 @@ def get_stats_summary(user_id, days=30):
         'averages': averages,
         'latest': snapshots[0] if snapshots else None
     }
+
+
+def update_latest_snapshot(user_id, data):
+    """Update the most recent performance snapshot for a user with partial data.
+    
+    Only updates fields that are not None. If no snapshot exists, creates a new one.
+    
+    Args:
+        user_id (str): User ID.
+        data (dict): Partial snapshot data (only non-null values will be updated).
+    
+    Returns:
+        dict: Updated or created snapshot.
+    """
+    supabase = get_supabase()
+    
+    # Get the latest snapshot
+    latest = get_latest_snapshot(user_id)
+    
+    # Filter out None values from data
+    filtered_data = {k: v for k, v in data.items() if v is not None and k != 'user_id'}
+    
+    if latest:
+        # Update existing snapshot
+        res = supabase.from_('performance_snapshots').update(filtered_data).eq('id', latest['id']).execute()
+        return res.data[0] if res.data else None
+    else:
+        # Create new snapshot if none exists
+        filtered_data['user_id'] = user_id
+        if 'snapshot_at' not in filtered_data:
+            filtered_data['snapshot_at'] = datetime.now().isoformat()
+        res = supabase.from_('performance_snapshots').insert(filtered_data).execute()
+        return res.data[0] if res.data else None

@@ -977,3 +977,151 @@ def get_summary():
         return jsonify({}), 200
     
     return get_user_stats_summary()
+
+
+@stats_routes.route('/snapshots/update-latest', methods=['POST', 'OPTIONS'])
+@token_required
+def update_latest_snapshot():
+    """
+    Update the latest performance snapshot with raw health data.
+    
+    This endpoint updates only the non-null fields in the most recent snapshot.
+    If no snapshot exists, it creates a new one. Raw health data is processed and formatted.
+    ---
+    tags:
+      - Statistics
+    parameters:
+      - in: header
+        name: Authorization
+        description: JWT token (Bearer <token>)
+        required: true
+        type: string
+      - in: body
+        name: body
+        description: Raw health data from mobile device
+        required: true
+        schema:
+          type: object
+          properties:
+            snapshot_at:
+              type: string
+              format: date-time
+              description: Timestamp of snapshot
+              example: "2025-10-16T16:33:36.947130Z"
+            energy:
+              type: number
+              nullable: true
+              example: null
+            stamina:
+              type: number
+              nullable: true
+              example: null
+            strength:
+              type: number
+              nullable: true
+              example: null
+            flexibility:
+              type: number
+              nullable: true
+              example: null
+            attention:
+              type: number
+              nullable: true
+              example: null
+            score_body:
+              type: number
+              nullable: true
+              example: null
+            score_mind:
+              type: number
+              nullable: true
+              example: null
+            model_version:
+              type: string
+              example: "v1.0"
+            calories_burned:
+              type: string
+              description: Calories burned. If 0, will be calculated from steps (1 step ≈ 0.04 cal)
+              example: "0.0"
+            steps_daily:
+              type: string
+              description: Daily steps count (used for calorie calculation if needed)
+              example: "94"
+            heart_rate:
+              type: string
+              nullable: true
+              description: Heart rate in BPM. If null, uses previous snapshot value
+              example: "67.25"
+            sleep_score:
+              type: string
+              description: Sleep duration in milliseconds (auto-converted to hours with quality label)
+              example: "25200000"
+            inputs:
+              type: object
+              nullable: true
+              description: Additional input metrics
+              example: null
+    responses:
+      200:
+        description: Snapshot updated successfully
+        schema:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            user_id:
+              type: string
+              format: uuid
+            snapshot_at:
+              type: string
+              format: date-time
+            energy:
+              type: number
+            stamina:
+              type: number
+            strength:
+              type: number
+            flexibility:
+              type: number
+            attention:
+              type: number
+            score_body:
+              type: number
+            score_mind:
+              type: number
+            model_version:
+              type: string
+            calories_burned:
+              type: string
+              example: "3.76"
+            steps_daily:
+              type: string
+              example: "94"
+            heart_rate:
+              type: string
+              example: "67.25"
+            sleep_score:
+              type: string
+              description: Format - "hours | quality" (quality = malo/estable/bueno)
+              example: "7.0 | bueno"
+            inputs:
+              type: object
+      400:
+        description: Invalid request or no valid data to update
+        schema:
+          $ref: '#/definitions/ErrorResponse'
+      401:
+        description: Unauthorized
+        schema:
+          $ref: '#/definitions/ErrorResponse'
+    """
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    
+    data = request.get_json()
+    if data is None:
+        return jsonify({'error': 'Invalid request'}), 400
+    
+    from controllers.stats_controller import update_latest_snapshot_with_health_data
+    return update_latest_snapshot_with_health_data(data)
