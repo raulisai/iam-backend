@@ -69,16 +69,22 @@ def create_new_routine_reminder(data):
 
     # Validate times_per_day
     times_per_day = data.get('times_per_day')
-    if not isinstance(times_per_day, int) or times_per_day < 1 or times_per_day > 24:
+    is_valid = isinstance(times_per_day, int)
+    is_valid = is_valid and 1 <= times_per_day <= 24
+    if not is_valid:
         return jsonify({'error': 'times_per_day must be between 1 and 24'}), 400
 
     # Validate source_type if provided
-    if 'source_type' in data and data['source_type'] not in ['mind', 'body', 'goal', 'custom', None]:
-        return jsonify({'error': 'Invalid source_type. Must be: mind, body, goal, or custom'}), 400
+    valid_sources = ['mind', 'body', 'goal', 'custom', None]
+    if 'source_type' in data and data['source_type'] not in valid_sources:
+        error_msg = 'Invalid source_type. Must be: mind, body, goal, or custom'
+        return jsonify({'error': error_msg}), 400
 
     # Validate priority if provided
-    if 'priority' in data and data['priority'] not in ['min', 'low', 'default', 'high', 'max']:
-        return jsonify({'error': 'Invalid priority. Must be: min, low, default, high, or max'}), 400
+    valid_priorities = ['min', 'low', 'default', 'high', 'max']
+    if 'priority' in data and data['priority'] not in valid_priorities:
+        error_msg = 'Invalid priority. Must be: min, low, default, high, or max'
+        return jsonify({'error': error_msg}), 400
 
     # Add user_id to data
     data['user_id'] = user_id
@@ -114,16 +120,22 @@ def update_routine_reminder_data(reminder_id, data):
     # Validate times_per_day if provided
     if 'times_per_day' in data:
         times_per_day = data.get('times_per_day')
-        if not isinstance(times_per_day, int) or times_per_day < 1 or times_per_day > 24:
+        is_valid = isinstance(times_per_day, int)
+        is_valid = is_valid and 1 <= times_per_day <= 24
+        if not is_valid:
             return jsonify({'error': 'times_per_day must be between 1 and 24'}), 400
 
     # Validate source_type if provided
-    if 'source_type' in data and data['source_type'] not in ['mind', 'body', 'goal', 'custom', None]:
-        return jsonify({'error': 'Invalid source_type. Must be: mind, body, goal, or custom'}), 400
+    valid_sources = ['mind', 'body', 'goal', 'custom', None]
+    if 'source_type' in data and data['source_type'] not in valid_sources:
+        error_msg = 'Invalid source_type. Must be: mind, body, goal, or custom'
+        return jsonify({'error': error_msg}), 400
 
     # Validate priority if provided
-    if 'priority' in data and data['priority'] not in ['min', 'low', 'default', 'high', 'max']:
-        return jsonify({'error': 'Invalid priority. Must be: min, low, default, high, or max'}), 400
+    valid_priorities = ['min', 'low', 'default', 'high', 'max']
+    if 'priority' in data and data['priority'] not in valid_priorities:
+        error_msg = 'Invalid priority. Must be: min, low, default, high, or max'
+        return jsonify({'error': error_msg}), 400
 
     # Remove immutable fields
     data.pop('id', None)

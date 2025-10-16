@@ -10,7 +10,11 @@ from controllers.routine_reminder_controller import (
     delete_routine_reminder_by_id
 )
 
-routine_reminder_routes = Blueprint('routine_reminders', __name__, url_prefix='/api/routine/reminders')
+routine_reminder_routes = Blueprint(
+    'routine_reminders',
+    __name__,
+    url_prefix='/api/routine/reminders'
+)
 
 
 @routine_reminder_routes.route('/', methods=['GET', 'OPTIONS'])

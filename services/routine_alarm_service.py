@@ -1,6 +1,7 @@
 """Routine alarm service for alarm operations."""
-from lib.db import get_supabase
 from datetime import datetime
+
+from lib.db import get_supabase
 
 
 def get_user_routine_alarms(user_id, source_type=None, is_active=None):
