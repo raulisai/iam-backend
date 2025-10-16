@@ -24,6 +24,8 @@ from routes.stats_routes import stats_routes
 from routes.task_recommendation_routes import task_recommendation_routes
 from routes.time_optimizer_routes import time_optimizer_routes
 from routes.notification_routes import notification_routes
+from routes.routine_alarm_routes import routine_alarm_routes
+from routes.routine_reminder_routes import routine_reminder_routes
 import os
 
 app = Flask(__name__)
@@ -127,7 +129,7 @@ def handle_preflight():
             response.headers['Access-Control-Allow-Origin'] = origin
         response.headers['Access-Control-Allow-Credentials'] = 'true'
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control, X-Accel-Buffering, Connection'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
         return response, 200
 
 # CORS configuration - Apply to all responses
@@ -145,7 +147,7 @@ def after_request(response):
         response.headers['Access-Control-Allow-Origin'] = origin
     response.headers['Access-Control-Allow-Credentials'] = 'true'
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control, X-Accel-Buffering, Connection'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
     return response
 
 # Register the blueprints
@@ -168,6 +170,8 @@ app.register_blueprint(stats_routes)
 app.register_blueprint(task_recommendation_routes)
 app.register_blueprint(time_optimizer_routes)
 app.register_blueprint(notification_routes)
+app.register_blueprint(routine_alarm_routes)
+app.register_blueprint(routine_reminder_routes)
 
 if __name__ == '__main__':
     # Get port from environment variable (Render assigns this)
