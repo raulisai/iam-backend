@@ -1,0 +1,65 @@
+name: Hourly Automation Tasks
+
+on:
+  # Run every hour
+  schedule:
+    - cron: '0 * * * *'  # At minute 0 of every hour
+  
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Specific task to run (leave empty for all tasks)'
+        required: false
+        type: choice
+        options:
+          - all
+          - notifications
+          - metrics
+          - scores
+          - daily_summary
+          - cleanup
+          - weekly_report
+
+jobs:
+  run-automation:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Run automation tasks
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+        run: |
+          if [ "${{ github.event.inputs.task }}" == "" ] || [ "${{ github.event.inputs.task }}" == "all" ]; then
+            echo "Running all hourly tasks..."
+            python scripts/run_automation.py
+          else
+            echo "Running specific task: ${{ github.event.inputs.task }}"
+            python scripts/run_automation.py ${{ github.event.inputs.task }}
+          fi
+      
+      - name: Upload logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: automation-logs-${{ github.run_number }}
+          path: |
+            *.log
+          retention-days: 7

@@ -4,7 +4,8 @@ from services.profile_service import (
     get_profile_by_user_id,
     create_profile,
     update_profile,
-    delete_profile
+    delete_profile,
+    add_goal_points
 )
 
 
@@ -96,3 +97,29 @@ def delete_user_profile():
         return jsonify({'error': 'Profile not found'}), 404
     
     return jsonify(profile), 200
+
+
+def add_goal_points_to_profile(data):
+    """Add points to user profile from a completed goal task.
+    
+    Args:
+        data (dict): Request data containing task_occurrence_id.
+    
+    Returns:
+        tuple: JSON response with updated profile and points details.
+    """
+    user_id = request.user.get('user_id')
+    task_occurrence_id = data.get('task_occurrence_id')
+    
+    if not task_occurrence_id:
+        return jsonify({'error': 'task_occurrence_id is required'}), 400
+    
+    result = add_goal_points(user_id, task_occurrence_id)
+    
+    if result is None:
+        return jsonify({'error': 'Failed to add points. Task occurrence not found or profile not found.'}), 404
+    
+    if isinstance(result, dict) and 'error' in result:
+        return jsonify(result), 400
+    
+    return jsonify(result), 200

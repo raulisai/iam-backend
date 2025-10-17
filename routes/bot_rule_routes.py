@@ -67,6 +67,11 @@ def get_rules():
               created_at:
                 type: string
                 format: date-time
+              id_task:
+                type: string
+                format: uuid
+                nullable: true
+                description: Reference to the task template or task ID associated with this rule
       401:
         description: Unauthorized - Invalid or missing token
         schema:
@@ -126,6 +131,11 @@ def get_rule_by_id(rule_id):
             created_at:
               type: string
               format: date-time
+            id_task:
+              type: string
+              format: uuid
+              nullable: true
+              description: Reference to the task template or task ID associated with this rule
       401:
         description: Unauthorized - Invalid or missing token
         schema:
@@ -186,6 +196,12 @@ def create_bot_rule():
               example: true
               default: true
               description: Whether the rule is currently active
+            id_task:
+              type: string
+              format: uuid
+              nullable: true
+              description: Reference to the task template or task ID associated with this rule
+              example: "550e8400-e29b-41d4-a716-446655440000"
     responses:
       201:
         description: Bot rule created successfully
@@ -212,6 +228,10 @@ def create_bot_rule():
             created_at:
               type: string
               format: date-time
+            id_task:
+              type: string
+              format: uuid
+              nullable: true
       400:
         description: Invalid request or missing required fields
         schema:
@@ -268,6 +288,11 @@ def update_bot_rule(rule_id):
             active:
               type: boolean
               example: false
+            id_task:
+              type: string
+              format: uuid
+              nullable: true
+              description: Reference to the task template or task ID associated with this rule
     responses:
       200:
         description: Bot rule updated successfully
@@ -294,6 +319,10 @@ def update_bot_rule(rule_id):
             created_at:
               type: string
               format: date-time
+            id_task:
+              type: string
+              format: uuid
+              nullable: true
       400:
         description: Invalid request
         schema:

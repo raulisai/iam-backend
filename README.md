@@ -13,6 +13,7 @@ Backend completo desarrollado en Flask con autenticación JWT, gestión de tarea
 - ✅ **Bot Rules** - Sistema de reglas automáticas configurable
 - ✅ **Registro de Actividades** - Logs y tracking de fallos
 - ✅ **Time Optimizer** - Sistema inteligente de optimización de horarios y tareas
+- ✅ **Sistema de Automatización** - Tareas programadas con GitHub Actions (scores, notificaciones, métricas)
 - ✅ **Swagger UI** - Documentación interactiva de API
 
 ## 📋 Requisitos
@@ -92,6 +93,13 @@ Abrir en el navegador: `http://localhost:5000/apidocs/`
 - **[TIME_OPTIMIZER_DIAGRAMS.md](Documentation/TIME_OPTIMIZER_DIAGRAMS.md)** - 📊 Diagramas y visualizaciones
 - **[TIME_OPTIMIZER_CURL_EXAMPLES.md](Documentation/TIME_OPTIMIZER_CURL_EXAMPLES.md)** - 🧪 Ejemplos cURL
 
+### Sistema de Automatización 🤖 NUEVO
+- **[AUTOMATION_SUMMARY.md](AUTOMATION_SUMMARY.md)** - 📋 Resumen ejecutivo del sistema
+- **[AUTOMATION_SETUP.md](AUTOMATION_SETUP.md)** - 🔧 Guía de configuración paso a paso
+- **[automation/README.md](automation/README.md)** - 📚 Documentación técnica completa
+- **[automation/ARCHITECTURE.md](automation/ARCHITECTURE.md)** - 🏗️ Arquitectura del sistema
+- **[automation/EXAMPLES.md](automation/EXAMPLES.md)** - 💡 Ejemplos de uso y casos comunes
+
 ## 🏗️ Estructura del Proyecto
 
 ```
@@ -105,13 +113,24 @@ iam-backend/
 ├── lib/                      # Utilidades (DB, agente IA)
 │   ├── agent.py              # Motor del agente IA
 │   └── db.py                 # Conexión a base de datos
-├── tools/                    # 🆕 Sistema de Tools del Agente
+├── tools/                    # Sistema de Tools del Agente
 │   ├── base_tool.py          # Clase base y registro
 │   ├── task_tools.py         # Tools de creación de tareas
 │   ├── query_tools.py        # Tools de consulta
 │   ├── task_action_tools.py  # Tools de acciones
 │   ├── TEMPLATE.py           # Plantilla para nuevas tools
 │   └── *.md                  # Documentación completa
+├── automation/               # 🆕 Sistema de Automatización
+│   ├── scheduler.py          # Orquestador principal
+│   ├── score_calculator.py   # Cálculo de scores
+│   ├── notification_sender.py# Envío de notificaciones
+│   ├── metrics_updater.py    # Actualización de métricas
+│   └── *.md                  # Documentación completa
+├── scripts/                  # Scripts ejecutables
+│   ├── run_automation.py     # Script para GitHub Actions
+│   └── manage_automation.py  # Utilidades de gestión
+├── .github/workflows/        # GitHub Actions
+│   └── hourly_automation.yml # Workflow horario
 └── Documentation/            # Documentación del proyecto
 ```
 
@@ -256,6 +275,111 @@ Scores:
 Ver [TIME_OPTIMIZER_QUICKSTART.md](Documentation/TIME_OPTIMIZER_QUICKSTART.md) para empezar.
 
 Ver documentación completa en [API_DOCUMENTATION.md](Documentation/API_DOCUMENTATION.md)
+
+### 🤖 Sistema de Automatización - Tareas Programadas con GitHub Actions
+
+El sistema de automatización ejecuta tareas programadas cada hora mediante GitHub Actions para mantener el sistema funcionando de forma autónoma.
+
+#### 🎯 ¿Qué hace?
+
+**Cada Hora (0 * * * *):**
+- ✅ Envía notificaciones programadas (alarmas y recordatorios de rutina)
+- ✅ Actualiza métricas de rendimiento de usuarios
+- ✅ Rastrea tasas de completación de tareas
+
+**Al Final del Día (23:00):**
+- ✅ Calcula scores diarios (Body y Mind)
+- ✅ Aplica penalizaciones por tareas incompletas
+- ✅ Envía resúmenes diarios a usuarios
+
+**Semanalmente (Domingo 00:00):**
+- ✅ Limpia snapshots antiguos (>90 días)
+- ✅ Genera reportes semanales de rendimiento
+
+#### 📊 Sistema de Scores
+
+**Penalizaciones Automáticas:**
+```
+Tarea Body incompleta:    -5 puntos
+Tarea Mind incompleta:    -5 puntos
+Alarma de rutina perdida: -3 puntos
+Score mínimo:              0 puntos
+```
+
+**Ejemplo:**
+```
+Usuario con 2 tareas Body pendientes y 1 Mind pendiente:
+- Penalty Body: 2 × 5 = -10 puntos
+- Penalty Mind: 1 × 5 = -5 puntos
+- Total: -15 puntos
+
+Score inicial: Body=100, Mind=100
+Score final:   Body=90,  Mind=95
+```
+
+#### 🔔 Notificaciones Inteligentes
+
+**Alarmas de Rutina:**
+- Horario específico (ej: 7:00 AM)
+- Días de la semana configurables
+- Notificaciones push via Firebase FCM
+
+**Recordatorios Distribuidos:**
+- Múltiples veces al día (ej: 8 veces)
+- Distribuidos en ventana de tiempo (ej: 8 AM - 10 PM)
+- Intervalo automático calculado
+
+#### 🚀 Configuración Rápida
+
+1. **Configurar Secrets en GitHub:**
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `FIREBASE_SERVICE_ACCOUNT`
+   - `JWT_SECRET_KEY`
+
+2. **Push al repositorio:**
+   ```bash
+   git push origin main
+   ```
+
+3. **El workflow se ejecuta automáticamente cada hora**
+
+#### 📈 Métricas Rastreadas
+
+```json
+{
+  "completed_body_tasks": 5,
+  "completed_mind_tasks": 3,
+  "body_completion_rate": 71.43,
+  "mind_completion_rate": 75.0,
+  "score_body": 90,
+  "score_mind": 95,
+  "active_alarms": 4,
+  "active_reminders": 6
+}
+```
+
+#### 🛠️ Comandos Útiles
+
+```bash
+# Ejecutar localmente
+python scripts/run_automation.py
+
+# Ejecutar tarea específica
+python scripts/run_automation.py notifications
+python scripts/run_automation.py metrics
+python scripts/run_automation.py scores
+
+# Ver snapshots recientes
+python scripts/manage_automation.py snapshots
+
+# Ver rutinas activas
+python scripts/manage_automation.py routines
+```
+
+#### 📚 Documentación Completa
+
+Ver [AUTOMATION_SETUP.md](AUTOMATION_SETUP.md) para configuración paso a paso.
 
 ## 🗄️ Base de Datos
 

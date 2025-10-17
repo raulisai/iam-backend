@@ -11,14 +11,17 @@ CREATE TABLE IF NOT EXISTS public.bot_rules (
   action                JSONB NOT NULL DEFAULT '{}'::jsonb,
   priority              INTEGER NOT NULL DEFAULT 10,
   active                BOOLEAN NOT NULL DEFAULT TRUE,
+  last_evaluated        TIMESTAMPTZ,
   created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  id_task               UUID
 );
 
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_bot_rules_active ON public.bot_rules(active);
 CREATE INDEX IF NOT EXISTS idx_bot_rules_priority ON public.bot_rules(priority);
 CREATE INDEX IF NOT EXISTS idx_bot_rules_created_at ON public.bot_rules(created_at);
+CREATE INDEX IF NOT EXISTS idx_bot_rules_id_task ON public.bot_rules(id_task);
 
 -- Comments
 COMMENT ON TABLE public.bot_rules IS 'Automated rules for the AI assistant';
@@ -27,3 +30,5 @@ COMMENT ON COLUMN public.bot_rules.condition IS 'Condition that triggers the rul
 COMMENT ON COLUMN public.bot_rules.action IS 'Action to perform when condition is met as JSON';
 COMMENT ON COLUMN public.bot_rules.priority IS 'Rule priority (higher numbers = higher priority)';
 COMMENT ON COLUMN public.bot_rules.active IS 'Whether the rule is active';
+COMMENT ON COLUMN public.bot_rules.last_evaluated IS 'Timestamp of when the rule was last evaluated';
+COMMENT ON COLUMN public.bot_rules.id_task IS 'Reference to the task template or task ID associated with this rule';

@@ -67,3 +67,63 @@ def delete_profile(user_id):
     supabase = get_supabase()
     res = supabase.from_('profiles').delete().eq('user_id', user_id).execute()
     return res.data[0] if res.data else None
+
+
+def add_goal_points(user_id, task_occurrence_id):
+    """Add points to user profile from a completed goal task.
+    
+    Args:
+        user_id (str): The user's ID.
+        task_occurrence_id (str): The task occurrence ID that was completed.
+    
+    Returns:
+        dict: Updated profile with points calculation details or None if error.
+    """
+    supabase = get_supabase()
+    
+    # Get task occurrence details with task and goal info
+    task_occ_res = supabase.from_('task_occurrences').select(
+        'id, task_id, goal_tasks(id, weight, goal_id, goals(id, target_value))'
+    ).eq('id', task_occurrence_id).execute()
+    
+    if not task_occ_res.data:
+        return None
+    
+    task_occ = task_occ_res.data[0]
+    task_weight = task_occ.get('goal_tasks', {}).get('weight', 1)
+    
+    # Get the last log entry for this occurrence to check if completed
+    log_res = supabase.from_('task_logs').select('action, metadata').eq(
+        'task_table', 'task_occurrences'
+    ).eq('task_id', task_occurrence_id).order('timestamp', desc=True).limit(1).execute()
+    
+    if not log_res.data or log_res.data[0].get('action') != 'completed':
+        return {'error': 'Task is not marked as completed'}
+    
+    # Calculate points (use metadata value if present, otherwise use weight)
+    metadata = log_res.data[0].get('metadata', {})
+    points_to_add = metadata.get('value', task_weight) if isinstance(metadata, dict) else task_weight
+    
+    # Get current profile
+    profile_res = supabase.from_('profiles').select('*').eq('user_id', user_id).execute()
+    
+    if not profile_res.data:
+        return None
+    
+    current_profile = profile_res.data[0]
+    current_earned = current_profile.get('goal_points_earned', 0)
+    new_earned = current_earned + points_to_add
+    
+    # Update profile with new points
+    update_res = supabase.from_('profiles').update({
+        'goal_points_earned': new_earned
+    }).eq('user_id', user_id).execute()
+    
+    if not update_res.data:
+        return None
+    
+    result = update_res.data[0]
+    result['points_added'] = points_to_add
+    result['previous_earned'] = current_earned
+    
+    return result
