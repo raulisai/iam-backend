@@ -28,6 +28,27 @@ def create_profile(data):
     Raises:
         ValueError: If profile already exists for this user.
     """
+    # Validar campos numéricos: si vienen null o tienen error, asignar 0
+    numeric_fields = [
+        'weight_kg', 'height_cm', 'hours_available_to_week',
+        'hours_used_to_week', 'goal_points_target',
+        'goal_points_earned'
+    ]
+    
+    for field in numeric_fields:
+        if field in data:
+            value = data.get(field)
+            if value is None or value == '':
+                data[field] = 0
+            else:
+                try:
+                    data[field] = float(value)
+                except (ValueError, TypeError):
+                    data[field] = 0
+    
+    # time_dead se queda por defecto en 9 minutos
+    data.setdefault('time_dead', 9)
+    
     supabase = get_supabase()
     try:
         res = supabase.from_('profiles').insert(data).execute()
