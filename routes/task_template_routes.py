@@ -6,6 +6,7 @@ from controllers.task_template_controller import (
     get_template_by_id,
     get_template_by_key,
     get_templates_by_cat,
+    get_templates_by_creator,
     create_template,
     update_template,
     delete_template
@@ -291,6 +292,68 @@ def get_by_category(category):
     if request.method == 'OPTIONS':
         return jsonify({}), 200
     return get_templates_by_cat(category)
+
+
+@task_template_routes.route('/creator/<created_by>', methods=['GET', 'OPTIONS'])
+@token_required
+def get_by_creator(created_by):
+    """Get task templates filtered by creator.
+    ---
+    tags:
+      - Task Templates
+    parameters:
+      - in: header
+        name: Authorization
+        description: JWT token (Bearer <token>)
+        required: true
+        type: string
+      - name: created_by
+        in: path
+        required: true
+        type: string
+        description: Creator identifier
+        example: "system"
+    responses:
+      200:
+        description: List of templates created by the specified creator
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              key:
+                type: string
+              name:
+                type: string
+              category:
+                type: string
+                enum: ["mind", "body"]
+              estimated_minutes:
+                type: integer
+              difficulty:
+                type: integer
+              reward_xp:
+                type: integer
+              default_params:
+                type: object
+              created_by:
+                type: string
+              descr:
+                type: string
+              created_at:
+                type: string
+                format: date-time
+      401:
+        description: Unauthorized - Invalid or missing token
+        schema:
+          $ref: '#/definitions/ErrorResponse'
+    """
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+    return get_templates_by_creator(created_by)
 
 
 @task_template_routes.route('/', methods=['POST'])

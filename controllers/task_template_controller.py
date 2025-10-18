@@ -5,6 +5,7 @@ from services.task_template_service import (
     get_task_template_by_id,
     get_task_template_by_key,
     get_templates_by_category,
+    get_templates_by_created_by,
     create_task_template,
     update_task_template,
     delete_task_template
@@ -65,6 +66,19 @@ def get_templates_by_cat(category):
         tuple: JSON response with templates and status code.
     """
     templates = get_templates_by_category(category)
+    return jsonify(templates), 200
+
+
+def get_templates_by_creator(created_by):
+    """Get templates by created_by filter.
+    
+    Args:
+        created_by (str): Creator identifier (e.g., 'system', 'bot-<id>', '<user-id>').
+    
+    Returns:
+        tuple: JSON response with templates and status code.
+    """
+    templates = get_templates_by_created_by(created_by)
     return jsonify(templates), 200
 
 

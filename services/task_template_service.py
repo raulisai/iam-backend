@@ -84,6 +84,20 @@ def update_task_template(template_id, data):
     return res.data[0] if res.data else None
 
 
+def get_templates_by_created_by(created_by):
+    """Get templates filtered by created_by.
+    
+    Args:
+        created_by (str): Creator identifier (e.g., 'system', 'bot-<id>', '<user-id>').
+    
+    Returns:
+        list: List of templates.
+    """
+    supabase = get_supabase()
+    res = supabase.from_('task_templates').select('*').eq('created_by', created_by).execute()
+    return res.data
+
+
 def delete_task_template(template_id):
     """Delete a task template.
     
