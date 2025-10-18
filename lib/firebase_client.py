@@ -96,14 +96,22 @@ def send_message_to_token(token, title, body, data=None):
 def send_alarma_to_token(token, data=None):
     """
     Envía un mensaje data-only (alarma) a un token con Firebase Admin SDK.
-    data: dict (valores convertidos a string internamente).
-    Retorna el message_id (str) devuelto por messaging.send.
+    
+    Args:
+        token (str): FCM device token.
+        data (dict, optional): Data payload (valores convertidos a string internamente).
+                              Ejemplo: {"tipo": "alarma", "title": "...", "body": "...", 
+                                       "mensaje": "...", "sonido": "sonido_alarma"}
+    
+    Returns:
+        str: message_id devuelto por messaging.send.
     """
     app = get_firebase_app()
     if app is None:
         raise FirebaseInitializationError("Firebase Admin SDK not initialized")
 
     # Asegurar que los valores sean strings (requisito de FCM para data)
+    # Esto incluye todos los campos: tipo, title, body, mensaje, sonido, etc.
     safe_data = {k: str(v) for k, v in (data or {}).items()}
 
     # Añade campo tipo si no existe

@@ -191,7 +191,7 @@ def send_alarm(user_id, mensaje, title=None, body=None, additional_data=None):
         mensaje (str): Alarm message.
         title (str, optional): Title for notification display in app.
         body (str, optional): Body for notification display in app.
-        additional_data (dict, optional): Additional data payload.
+        additional_data (dict, optional): Additional data payload (e.g., {"sonido": "sonido_alarma"}).
     
     Returns:
         tuple: JSON response and status code.

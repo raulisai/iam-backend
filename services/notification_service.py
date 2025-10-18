@@ -185,7 +185,7 @@ def send_alarm_to_user(user_id, mensaje, title=None, body=None, additional_data=
         mensaje (str): Alarm message.
         title (str, optional): Title for notification display in app. Defaults to "Alarma".
         body (str, optional): Body for notification display in app. Defaults to mensaje.
-        additional_data (dict, optional): Additional data payload.
+        additional_data (dict, optional): Additional data payload (e.g., {"sonido": "sonido_alarma"}).
     
     Returns:
         dict: Results with success/failure information for each token.
@@ -210,10 +210,12 @@ def send_alarm_to_user(user_id, mensaje, title=None, body=None, additional_data=
     # This ensures onMessageReceived is called even in background/closed state
     data_payload = {
         "tipo": "alarma",
+        "title": notification_title,
+        "body": notification_body,
         "mensaje": mensaje
     }
     
-    # Merge with any additional data
+    # Merge with any additional data (e.g., sonido, etc.)
     if additional_data:
         data_payload.update(additional_data)
     

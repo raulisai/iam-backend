@@ -358,11 +358,15 @@ def send_alarm_notification(current_user):
                 title:
                   type: string
                   description: Title for display (optional, defaults to "Alarma")
-                  example: "Alarma"
+                  example: "sonido"
                 body:
                   type: string
                   description: Body for display (optional, defaults to mensaje)
-                  example: "¡Alarma activada!"
+                  example: "¡Alarma ahora!"
+                sonido:
+                  type: string
+                  description: Sound to play for the alarm (optional)
+                  example: "sonido_alarma"
     responses:
       200:
         description: Alarm sent successfully
@@ -410,6 +414,7 @@ def send_alarm_notification(current_user):
     user_id = current_user.get('user_id')
     
     # Extract additional data (excluding tipo, mensaje, title, body which are handled separately)
+    # This includes fields like "sonido" and any other custom parameters
     additional_data = {k: v for k, v in data.items() if k not in ['tipo', 'mensaje', 'title', 'body']}
     
     return send_alarm(user_id, mensaje, title, body, additional_data if additional_data else None)
