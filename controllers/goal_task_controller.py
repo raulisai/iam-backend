@@ -17,7 +17,9 @@ from services.goal_task_service import (
     get_goal_progress,
     get_occurrence_with_status,
     get_occurrences_with_status,
-    get_goal_progress_detailed
+    get_goal_progress_detailed,
+    complete_occurrence,
+    uncomplete_occurrence
 )
 from services.goal_service import get_goal_by_id
 
@@ -459,3 +461,85 @@ def get_progress_detailed_for_goal(goal_id):
     progress = get_goal_progress_detailed(goal_id)
     
     return jsonify(progress), 200
+
+
+def complete_task_occurrence(occurrence_id):
+    """Mark an occurrence as completed and add points.
+    
+    Args:
+        occurrence_id (str): Occurrence ID.
+    
+    Returns:
+        tuple: JSON response with result and status code.
+    """
+    user_id = request.user.get('user_id')
+    
+    # Get occurrence
+    occurrence = get_occurrence_by_id(occurrence_id)
+    if not occurrence:
+        return jsonify({'error': 'Occurrence not found'}), 404
+    
+    # Verify ownership through task
+    task = get_goal_task_by_id(occurrence.get('task_id'))
+    if not task:
+        return jsonify({'error': 'Task not found'}), 404
+    
+    if task.get('user_id') != user_id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    # Get value from request body if provided
+    data = request.get_json() or {}
+    value = data.get('value')
+    
+    # Get task weight for points
+    task_weight = float(task.get('weight', 1))
+    
+    # Complete occurrence
+    result = complete_occurrence(occurrence_id, user_id, task_weight, value)
+    
+    if result is None:
+        return jsonify({'error': 'Failed to complete occurrence'}), 500
+    
+    if 'error' in result:
+        return jsonify(result), 400
+    
+    return jsonify(result), 200
+
+
+def uncomplete_task_occurrence(occurrence_id):
+    """Revert an occurrence to pending and subtract points.
+    
+    Args:
+        occurrence_id (str): Occurrence ID.
+    
+    Returns:
+        tuple: JSON response with result and status code.
+    """
+    user_id = request.user.get('user_id')
+    
+    # Get occurrence
+    occurrence = get_occurrence_by_id(occurrence_id)
+    if not occurrence:
+        return jsonify({'error': 'Occurrence not found'}), 404
+    
+    # Verify ownership through task
+    task = get_goal_task_by_id(occurrence.get('task_id'))
+    if not task:
+        return jsonify({'error': 'Task not found'}), 404
+    
+    if task.get('user_id') != user_id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    # Get task weight for points
+    task_weight = float(task.get('weight', 1))
+    
+    # Uncomplete occurrence
+    result = uncomplete_occurrence(occurrence_id, user_id, task_weight)
+    
+    if result is None:
+        return jsonify({'error': 'Failed to uncomplete occurrence'}), 500
+    
+    if 'error' in result:
+        return jsonify(result), 400
+    
+    return jsonify(result), 200

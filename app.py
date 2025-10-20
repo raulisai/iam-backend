@@ -26,6 +26,7 @@ from routes.time_optimizer_routes import time_optimizer_routes
 from routes.notification_routes import notification_routes
 from routes.routine_alarm_routes import routine_alarm_routes
 from routes.routine_reminder_routes import routine_reminder_routes
+from routes.points_routes import points_routes
 import os
 
 app = Flask(__name__)
@@ -172,6 +173,7 @@ app.register_blueprint(time_optimizer_routes)
 app.register_blueprint(notification_routes)
 app.register_blueprint(routine_alarm_routes)
 app.register_blueprint(routine_reminder_routes)
+app.register_blueprint(points_routes)
 
 if __name__ == '__main__':
     # Get port from environment variable (Render assigns this)

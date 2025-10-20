@@ -15,7 +15,9 @@ from controllers.goal_task_controller import (
     log_action_on_occurrence,
     get_logs_for_occurrence,
     get_progress_for_goal,
-    get_progress_detailed_for_goal
+    get_progress_detailed_for_goal,
+    complete_task_occurrence,
+    uncomplete_task_occurrence
 )
 
 goal_task_routes = Blueprint('goal_tasks', __name__, url_prefix='/api/goals')
@@ -593,6 +595,126 @@ def get_occurrence_logs(occurrence_id):
     if request.method == 'OPTIONS':
         return jsonify({}), 200
     return get_logs_for_occurrence(occurrence_id)
+
+
+@goal_task_routes.route('/occurrences/<occurrence_id>/complete', methods=['POST'])
+@token_required
+def complete_occurrence(occurrence_id):
+    """Mark an occurrence as completed and add points.
+    ---
+    tags:
+      - Task Occurrences
+    parameters:
+      - in: header
+        name: Authorization
+        description: JWT token (Bearer <token>)
+        required: true
+        type: string
+      - name: occurrence_id
+        in: path
+        required: true
+        type: string
+        format: uuid
+        description: Occurrence ID to complete
+      - in: body
+        name: body
+        description: Optional value for metric-based goals
+        schema:
+          type: object
+          properties:
+            value:
+              type: number
+              description: Value achieved (for metric-based goals)
+              example: 5.5
+    responses:
+      200:
+        description: Occurrence completed successfully and points added
+        schema:
+          type: object
+          properties:
+            occurrence:
+              type: object
+              description: Updated occurrence with status
+            log:
+              type: object
+              description: Created log entry
+            points:
+              type: object
+              properties:
+                previous_earned:
+                  type: number
+                points_added:
+                  type: number
+                new_earned:
+                  type: number
+                task_type:
+                  type: string
+                  example: "goal"
+      400:
+        description: Occurrence already completed
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+      404:
+        description: Occurrence not found
+    """
+    return complete_task_occurrence(occurrence_id)
+
+
+@goal_task_routes.route('/occurrences/<occurrence_id>/uncomplete', methods=['POST'])
+@token_required
+def uncomplete_occurrence(occurrence_id):
+    """Revert an occurrence to pending and subtract points.
+    ---
+    tags:
+      - Task Occurrences
+    parameters:
+      - in: header
+        name: Authorization
+        description: JWT token (Bearer <token>)
+        required: true
+        type: string
+      - name: occurrence_id
+        in: path
+        required: true
+        type: string
+        format: uuid
+        description: Occurrence ID to uncomplete
+    responses:
+      200:
+        description: Occurrence reverted successfully and points subtracted
+        schema:
+          type: object
+          properties:
+            occurrence:
+              type: object
+              description: Updated occurrence with status
+            log:
+              type: object
+              description: Created log entry
+            points:
+              type: object
+              properties:
+                previous_earned:
+                  type: number
+                points_subtracted:
+                  type: number
+                new_earned:
+                  type: number
+                task_type:
+                  type: string
+                  example: "goal"
+      400:
+        description: Occurrence is not completed
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+      404:
+        description: Occurrence not found
+    """
+    return uncomplete_task_occurrence(occurrence_id)
 
 
 # ===== PROGRESS ENDPOINT =====

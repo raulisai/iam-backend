@@ -1,6 +1,7 @@
 """Body task service for body task operations."""
 from lib.db import get_supabase
 from datetime import datetime
+from services.points_service import add_earned_points, subtract_earned_points
 
 
 def get_user_body_tasks(user_id, status=None):
@@ -66,23 +67,74 @@ def update_body_task(task_id, data):
     return res.data[0] if res.data else None
 
 
-def complete_body_task(task_id, xp_awarded):
-    """Mark a body task as completed.
+def complete_body_task(task_id, user_id, reward_xp):
+    """Mark a body task as completed and add points.
     
     Args:
         task_id (str): Task ID.
-        xp_awarded (int): XP to award.
+        user_id (str): User ID.
+        reward_xp (int): XP to award.
     
     Returns:
-        dict: Updated task.
+        dict: Updated task with points info.
     """
     supabase = get_supabase()
+    
+    # Update task status
     res = supabase.from_('tasks_body').update({
         'status': 'completed',
-        'completed_at': datetime.utcnow().isoformat(),
-        'xp_awarded': xp_awarded
+        'completed_at': datetime.utcnow().isoformat()
     }).eq('id', task_id).execute()
-    return res.data[0] if res.data else None
+    
+    if not res.data:
+        return None
+    
+    task = res.data[0]
+    
+    # Add points if reward_xp > 0
+    points_result = None
+    if reward_xp > 0:
+        points_result = add_earned_points(user_id, reward_xp, 'body')
+    
+    return {
+        'task': task,
+        'points': points_result
+    }
+
+
+def uncomplete_body_task(task_id, user_id, reward_xp):
+    """Revert a body task to pending and subtract points.
+    
+    Args:
+        task_id (str): Task ID.
+        user_id (str): User ID.
+        reward_xp (int): XP to remove.
+    
+    Returns:
+        dict: Updated task with points info.
+    """
+    supabase = get_supabase()
+    
+    # Update task status back to pending
+    res = supabase.from_('tasks_body').update({
+        'status': 'pending',
+        'completed_at': None
+    }).eq('id', task_id).execute()
+    
+    if not res.data:
+        return None
+    
+    task = res.data[0]
+    
+    # Subtract points if reward_xp > 0
+    points_result = None
+    if reward_xp > 0:
+        points_result = subtract_earned_points(user_id, reward_xp, 'body')
+    
+    return {
+        'task': task,
+        'points': points_result
+    }
 
 
 def delete_body_task(task_id):

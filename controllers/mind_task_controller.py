@@ -6,6 +6,7 @@ from services.mind_task_service import (
     create_mind_task,
     update_mind_task,
     complete_mind_task,
+    uncomplete_mind_task,
     delete_mind_task
 )
 
@@ -105,17 +106,17 @@ def update_mind_task_data(task_id, data):
 
 
 def complete_task(task_id):
-    """Mark a mind task as completed.
+    """Mark a mind task as completed and add points.
     
     Args:
         task_id (str): Task ID.
     
     Returns:
-        tuple: JSON response with updated task and status code.
+        tuple: JSON response with updated task and points info.
     """
     user_id = request.user.get('user_id')
     
-    # Verify task belongs to user
+    # Verify task belongs to user and get template info
     task = get_mind_task_by_id(task_id)
     if task is None:
         return jsonify({'error': 'Task not found'}), 404
@@ -123,15 +124,59 @@ def complete_task(task_id):
     if task.get('user_id') != user_id:
         return jsonify({'error': 'Unauthorized'}), 403
     
-    # Get XP from template or use default
-    xp_awarded = task.get('task_templates', {}).get('reward_xp', 0) if task.get('task_templates') else 0
+    # Check if already completed
+    if task.get('status') == 'completed':
+        return jsonify({'error': 'Task already completed'}), 400
     
-    updated_task = complete_mind_task(task_id, xp_awarded)
+    # Get reward_xp from template
+    reward_xp = 0
+    if task.get('task_templates'):
+        reward_xp = task['task_templates'].get('reward_xp', 0)
     
-    if updated_task is None:
+    # Complete task and add points
+    result = complete_mind_task(task_id, user_id, reward_xp)
+    
+    if result is None:
         return jsonify({'error': 'Failed to complete task'}), 500
     
-    return jsonify(updated_task), 200
+    return jsonify(result), 200
+
+
+def uncomplete_task(task_id):
+    """Revert a mind task to pending and subtract points.
+    
+    Args:
+        task_id (str): Task ID.
+    
+    Returns:
+        tuple: JSON response with updated task and points info.
+    """
+    user_id = request.user.get('user_id')
+    
+    # Verify task belongs to user and get template info
+    task = get_mind_task_by_id(task_id)
+    if task is None:
+        return jsonify({'error': 'Task not found'}), 404
+    
+    if task.get('user_id') != user_id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    # Check if task is completed
+    if task.get('status') != 'completed':
+        return jsonify({'error': 'Task is not completed'}), 400
+    
+    # Get reward_xp from template
+    reward_xp = 0
+    if task.get('task_templates'):
+        reward_xp = task['task_templates'].get('reward_xp', 0)
+    
+    # Uncomplete task and subtract points
+    result = uncomplete_mind_task(task_id, user_id, reward_xp)
+    
+    if result is None:
+        return jsonify({'error': 'Failed to uncomplete task'}), 500
+    
+    return jsonify(result), 200
 
 
 def delete_mind_task_by_id(task_id):

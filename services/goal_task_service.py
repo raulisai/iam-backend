@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from dateutil import rrule as rrule_module
 import time
 import logging
+from services.points_service import add_earned_points, subtract_earned_points
 
 logger = logging.getLogger(__name__)
 
@@ -530,4 +531,87 @@ def get_goal_progress_detailed(goal_id):
         'total_occurrences': total_occurrences,
         'completed_occurrences': completed_occurrences,
         'tasks': tasks_detail
+    }
+
+
+def complete_occurrence(occurrence_id, user_id, task_weight, value=None):
+    """Mark an occurrence as completed and add points.
+    
+    Args:
+        occurrence_id (str): Occurrence ID.
+        user_id (str): User ID.
+        task_weight (float): Weight of the task (used as points).
+        value (float, optional): Value achieved (for metric-based goals).
+    
+    Returns:
+        dict: Result with occurrence, log and points info.
+    """
+    # Get occurrence
+    occurrence = get_occurrence_by_id(occurrence_id)
+    if not occurrence:
+        return None
+    
+    # Check if already completed
+    logs = get_occurrence_logs(occurrence_id)
+    if logs and logs[0].get('action') == 'completed':
+        return {'error': 'Occurrence already completed'}
+    
+    # Log the completion
+    metadata = {}
+    if value is not None:
+        metadata['value'] = value
+    
+    log_entry = log_occurrence_action(occurrence_id, user_id, 'completed', metadata)
+    
+    # Add points (use weight as points for goal tasks)
+    points_result = None
+    if task_weight > 0:
+        points_result = add_earned_points(user_id, task_weight, 'goal')
+    
+    # Get updated occurrence with status
+    updated_occurrence = get_occurrence_with_status(occurrence_id)
+    
+    return {
+        'occurrence': updated_occurrence,
+        'log': log_entry,
+        'points': points_result
+    }
+
+
+def uncomplete_occurrence(occurrence_id, user_id, task_weight):
+    """Revert an occurrence to pending and subtract points.
+    
+    Args:
+        occurrence_id (str): Occurrence ID.
+        user_id (str): User ID.
+        task_weight (float): Weight of the task (used as points).
+    
+    Returns:
+        dict: Result with occurrence, log and points info.
+    """
+    # Get occurrence
+    occurrence = get_occurrence_by_id(occurrence_id)
+    if not occurrence:
+        return None
+    
+    # Check if it's completed
+    logs = get_occurrence_logs(occurrence_id)
+    if not logs or logs[0].get('action') != 'completed':
+        return {'error': 'Occurrence is not completed'}
+    
+    # Log the uncomplete action
+    log_entry = log_occurrence_action(occurrence_id, user_id, 'uncompleted', {})
+    
+    # Subtract points
+    points_result = None
+    if task_weight > 0:
+        points_result = subtract_earned_points(user_id, task_weight, 'goal')
+    
+    # Get updated occurrence with status
+    updated_occurrence = get_occurrence_with_status(occurrence_id)
+    
+    return {
+        'occurrence': updated_occurrence,
+        'log': log_entry,
+        'points': points_result
     }

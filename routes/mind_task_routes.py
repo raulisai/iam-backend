@@ -7,6 +7,7 @@ from controllers.mind_task_controller import (
     create_new_mind_task,
     update_mind_task_data,
     complete_task,
+    uncomplete_task,
     delete_mind_task_by_id
 )
 
@@ -422,6 +423,75 @@ def complete(task_id):
           $ref: '#/definitions/ErrorResponse'
     """
     return complete_task(task_id)
+
+
+@mind_task_routes.route('/<task_id>/uncomplete', methods=['POST'])
+@token_required
+def uncomplete(task_id):
+    """Revert mind task to pending and subtract points.
+    ---
+    tags:
+      - Mind Tasks
+    parameters:
+      - in: header
+        name: Authorization
+        description: JWT token (Bearer <token>)
+        required: true
+        type: string
+      - name: task_id
+        in: path
+        required: true
+        type: string
+        format: uuid
+        description: Mind task ID to uncomplete
+    responses:
+      200:
+        description: Task reverted successfully and points subtracted
+        schema:
+          type: object
+          properties:
+            task:
+              type: object
+              properties:
+                id:
+                  type: string
+                  format: uuid
+                status:
+                  type: string
+                  enum: ["pending"]
+                completed_at:
+                  type: string
+                  nullable: true
+            points:
+              type: object
+              properties:
+                previous_earned:
+                  type: number
+                points_subtracted:
+                  type: number
+                new_earned:
+                  type: number
+                task_type:
+                  type: string
+                  example: "mind"
+      400:
+        description: Task is not completed
+        schema:
+          $ref: '#/definitions/ErrorResponse'
+      401:
+        description: Unauthorized - Invalid or missing token
+        schema:
+          $ref: '#/definitions/ErrorResponse'
+      403:
+        description: Forbidden - Task belongs to another user
+        schema:
+          $ref: '#/definitions/ErrorResponse'
+      404:
+        description: Mind task not found
+        schema:
+          $ref: '#/definitions/ErrorResponse'
+    """
+    return uncomplete_task(task_id)
 
 
 @mind_task_routes.route('/<task_id>', methods=['DELETE'])
