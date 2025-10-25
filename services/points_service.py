@@ -179,80 +179,63 @@ def _update_snapshot_score(user_id, points, task_type, operation='add'):
         operation (str): Operation type ('add' or 'subtract').
     """
     supabase = get_supabase()
-    today = date.today().isoformat()
+    from datetime import datetime
+    today = datetime.now().date().isoformat()
     
     # Get or create today's snapshot
     snapshot_result = supabase.from_('performance_snapshots').select(
-        'id, metrics'
-    ).eq('user_id', user_id).eq('snapshot_date', today).execute()
+        'id, score_mind, score_body, inputs'
+    ).eq('user_id', user_id).gte('snapshot_at', f'{today}T00:00:00').lte('snapshot_at', f'{today}T23:59:59').execute()
     
     if snapshot_result.data:
         # Update existing snapshot
         snapshot = snapshot_result.data[0]
-        metrics = snapshot['metrics'] or {}
         
-        # Calculate score multiplier based on task type
+        # Get current scores
+        current_mind_score = float(snapshot.get('score_mind', 0) or 0)
+        current_body_score = float(snapshot.get('score_body', 0) or 0)
+        inputs = snapshot.get('inputs') or {}
+        goal_score = float(inputs.get('goal_score', 0))
+        
+        # Calculate score change based on task type
         if task_type == 'mind':
-            multiplier = 1.0
-            score_key = 'mind_score'
+            score_change = points if operation == 'add' else -points
+            new_mind_score = max(0, current_mind_score + score_change)
+            
+            supabase.from_('performance_snapshots').update({
+                'score_mind': new_mind_score
+            }).eq('id', snapshot['id']).execute()
+            
         elif task_type == 'body':
-            multiplier = 1.0
-            score_key = 'body_score'
+            score_change = points if operation == 'add' else -points
+            new_body_score = max(0, current_body_score + score_change)
+            
+            supabase.from_('performance_snapshots').update({
+                'score_body': new_body_score
+            }).eq('id', snapshot['id']).execute()
+            
         elif task_type == 'goal':
-            multiplier = 0.5  # Goal tasks contribute less to individual scores
-            score_key = 'goal_score'
-        else:
-            multiplier = 1.0
-            score_key = 'general_score'
-        
-        # Update score
-        current_score = float(metrics.get(score_key, 0))
-        score_change = points * multiplier
-        
-        if operation == 'subtract':
-            score_change = -score_change
-        
-        new_score = max(0, current_score + score_change)
-        metrics[score_key] = new_score
-        
-        # Update total score
-        total_score = (
-            float(metrics.get('mind_score', 0)) +
-            float(metrics.get('body_score', 0)) +
-            float(metrics.get('goal_score', 0))
-        )
-        metrics['total_score'] = total_score
-        
-        supabase.from_('performance_snapshots').update({
-            'metrics': metrics
-        }).eq('id', snapshot['id']).execute()
+            # Goal tasks contribute to inputs.goal_score
+            multiplier = 0.5  # Goal tasks contribute less
+            score_change = (points * multiplier) if operation == 'add' else -(points * multiplier)
+            new_goal_score = max(0, goal_score + score_change)
+            inputs['goal_score'] = new_goal_score
+            
+            supabase.from_('performance_snapshots').update({
+                'inputs': inputs
+            }).eq('id', snapshot['id']).execute()
     else:
-        # Create new snapshot
-        metrics = {
-            'mind_score': 0,
-            'body_score': 0,
-            'goal_score': 0,
-            'total_score': 0
+        # Create new snapshot with initial scores
+        from datetime import datetime
+        new_snapshot = {
+            'user_id': user_id,
+            'snapshot_at': datetime.now().isoformat(),
+            'score_mind': points if task_type == 'mind' else 0,
+            'score_body': points if task_type == 'body' else 0,
+            'inputs': {'goal_score': points * 0.5 if task_type == 'goal' else 0}
         }
         
-        if task_type == 'mind':
-            metrics['mind_score'] = points
-        elif task_type == 'body':
-            metrics['body_score'] = points
-        elif task_type == 'goal':
-            metrics['goal_score'] = points * 0.5
-        
-        metrics['total_score'] = (
-            metrics['mind_score'] +
-            metrics['body_score'] +
-            metrics['goal_score']
-        )
-        
-        supabase.from_('performance_snapshots').insert({
-            'user_id': user_id,
-            'snapshot_date': today,
-            'metrics': metrics
-        }).execute()
+        supabase.from_('performance_snapshots').insert(new_snapshot).execute()
 
 
 def recalculate_all_points(user_id):
