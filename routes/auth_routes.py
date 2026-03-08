@@ -1,6 +1,6 @@
 """Authentication routes for user login and management."""
 from flask import Blueprint, request, jsonify
-from controllers.auth_controller import get_all_users, authenticate_user
+from controllers.auth_controller import get_all_users, authenticate_user, register_user
 
 # Create Blueprint for authentication routes
 auth_routes = Blueprint('auth', __name__)
@@ -81,3 +81,46 @@ def login():
     password = data.get('password')
     
     return authenticate_user(email, password)
+
+
+@auth_routes.route('/register', methods=['POST', 'OPTIONS'])
+def register():
+    """
+    Handle the register endpoint and create a new user.
+    ---
+    tags:
+      - Auth
+    parameters:
+      - in: body
+        name: body
+        description: User registration data
+        required: true
+        schema:
+          type: object
+          properties:
+            email:
+              type: string
+            password:
+              type: string
+            name:
+              type: string
+    responses:
+      201:
+        description: User successfully registered
+      400:
+        description: Invalid request
+      409:
+        description: Conflict (User already exists)
+    """
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+        
+    data = request.get_json()
+    if data is None:
+        return jsonify({'error': 'Invalid request'}), 400
+        
+    email = data.get('email')
+    password = data.get('password')
+    name = data.get('name')
+    
+    return register_user(email, password, name)

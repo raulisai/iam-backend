@@ -63,7 +63,24 @@ swagger_template = {
         "LoginResponse": {
             "type": "object",
             "properties": {
-                "token": {"type": "string", "example": "uuid-token-or-userid"},
+                "token": {"type": "string", "example": "jwt-token-string"},
+                "user": {"$ref": "#/definitions/User"}
+            }
+        },
+        "RegisterRequest": {
+            "type": "object",
+            "required": ["email", "password"],
+            "properties": {
+                "email": {"type": "string", "example": "newuser@example.com"},
+                "password": {"type": "string", "example": "securepassword123"},
+                "name": {"type": "string", "example": "New User"}
+            }
+        },
+        "RegisterResponse": {
+            "type": "object",
+            "properties": {
+                "message": {"type": "string", "example": "User registered successfully"},
+                "token": {"type": "string", "example": "jwt-token-string"},
                 "user": {"$ref": "#/definitions/User"}
             }
         },
