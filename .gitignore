@@ -12,3 +12,4 @@ instance/
 .env.local
 .env.*.local
 .idea/
+.venv/
